@@ -1,0 +1,147 @@
+library(survival)
+library(survminer)
+
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+dataset = read.table("dataset.csv",  na.strings=".", sep = "\t",  header=T, row.names=NULL)
+
+# Rimuovo l'id della riga
+dataset = dataset[, -1]
+
+# Prendo solo le covariate cliniche
+dataset = dataset[1:7]
+
+# Converto le variabili categoriche in categorie numeriche
+dataset$Diam = ifelse(dataset$Diam == "<=2cm", 0, 1)
+dataset$N = ifelse(dataset$N == "<4", 0, 1)
+dataset$ER = ifelse(dataset$ER == "Negative", 0, 1)
+dataset$Grade = ifelse(dataset$Grade == "Poorly diff", 0, 
+                       ifelse(dataset$Grade == "Intermediate", 1, 2))
+
+# Kaplan-Meier
+fit = survfit(Surv(dataset$time, dataset$event) ~ 1)
+
+summary(fit)
+
+par(mar=c(4, 4, 2, 2))
+plot(fit, xlab='time (months)', ylab='survival probability')
+title('Kaplan Meier estimate (pooled data)')
+
+# Aalen-Nelson hazard cumulato
+na.haz = cumsum(fit$n.event / fit$n.risk)
+cbind(fit$time , na.haz)
+
+plot(fit$time  , na.haz, type='s', xlab='time ', ylab='cumulative hazard')
+
+# Relationship between survival and hazard
+cumhaz =  -log(fit$surv)
+plot(fit$time, cumhaz, type='s', ylim=c(0,1) , xlab='time', ylab='cumulative hazard')
+
+# Basal hazard
+b.haz = basehaz(coxph(Surv(dataset$time, dataset$event) ~ 1, method="exact") )
+plot(b.haz$time  , b.haz$hazard, type='s', xlab='time', ylab='cumulative hazard')
+
+# Contrast the findings
+plot(fit$time, na.haz, type='s', xlab='time (months)', ylab='cumulative hazard', ylim=c(0, 1))
+points(fit$time, na.haz)
+lines(fit$time, cumhaz, type='s',col=2)
+points(fit$time, cumhaz, pch=20,col=2)
+lines(b.haz$time, b.haz$hazard, type='s',col=3)
+points(b.haz$time, b.haz$hazard, pch=5,col=3)
+legend("bottomright", legend=c("Nelson-Aalen estimate", "-log(S(t))", "Baseline hazard from Cox"),
+       col=c(1, 2, 3), lty=1, pch=c(1, 20, 5))
+
+# Creo il modello di cox
+model<-coxph(formula = Surv(time, event) ~ factor(Diam) + factor(N) + factor(ER) + factor(Grade) + Age, data = dataset)
+summary(model)
+
+# Cosa vediamo dal summary
+# Il valore exp(coef) è quello più importante
+# Vediamo che ad esempio Diam = 1 aumenta l'azzardo di un fattore pari a 1.497
+# Grade = 2 riduce l'azzardo di un fattore pari a 0.45, questo va bene perchè grade = 2 è benigno
+# Strano che l'età faccia 0.95, mi aspetto che l'età riduca la survival 
+# Non ho tante stelline quindi i test non sono molto significativi?
+# Visto che Age ha quasi uno nell'upper .95 dovrebbe significare che non influisce quasi per nulla sulla predizione
+
+# In your particular application, you are under-powered to test this many coefficients. 
+# The usual rule of thumb in Cox or logistic regressions is to have about 15 events per predictor variable being considered. 
+# (For this, interaction terms count as predictor variables.) Your 53 events thus would limit you to about 3 predictors, 
+# while your model includes 6. Note that your overall model does not reach standard statistical significance 
+# (p-value is > 0.05 for the omnibus tests), so you should not be paying much attention to the individual regression coefficients anyway. 
+# This model is not significantly different, by standard frequentist criteria, from no model at all.
+# Dobbiamo usare meno predittori?
+
+ggsurvplot(survfit(model), data = dataset, color = "#2E9FDF",
+           +            ggtheme = theme_minimal())
+
+# Modello basale
+bas = basehaz(model,centered=FALSE)
+bas.surv<- exp(-bas[, 1])
+plot(bas$time, bas.surv, type='s', col=1, ylim=c(0, 1) , xlim=c(0, 18),lty=2, xlab='time', ylab='survival probability')
+
+# Azzardo proporzionale per Diam
+par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
+checkPH.Diam = cox.zph(model)[1]
+plot(checkPH.Diam, main="Check PH assumption of Diam")
+points(checkPH.Diam$x, checkPH.Diam$y, pch=16, col="lightgray")
+abline(h=0, lty=2, col=2)
+
+km.Diam = survfit(Surv(time, event) ~ factor(Diam), data=dataset)
+plot(km.Diam, col=c("black", "red"), fun="cloglog",ylab="log(-log(Survival))",xlab="log(time)",main="Check PH assumption of Diam")
+
+# Azzardo proporzionale per N
+par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
+checkPH.N = cox.zph(model)[2]
+plot(checkPH.N, main="Check PH assumption of N")
+points(checkPH.N$x, checkPH.N$y, pch=16, col="lightgray")
+abline(h=0, lty=2, col=2)
+
+km.N = survfit(Surv(time, event) ~ factor(N), data=dataset)
+plot(km.N, col=c("black", "red"), fun="cloglog",ylab="log(-log(Survival))",xlab="log(time)",main="Check PH assumption of N")
+
+# Azzardo proporzionale per ER
+par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
+checkPH.ER = cox.zph(model)[3]
+plot(checkPH.ER, main="Check PH assumption of ER")
+points(checkPH.ER$x, checkPH.ER$y, pch=16, col="lightgray")
+abline(h=0, lty=2, col=2)
+
+km.ER = survfit(Surv(time, event) ~ factor(ER), data=dataset)
+plot(km.ER, col=c("black", "red"), fun="cloglog",ylab="log(-log(Survival))",xlab="log(time)",main="Check PH assumption of ER")
+
+# Azzardo proporzionale per Grade? Boh ha più di due fattori 
+
+# Forma funzionale di age 
+# Knots è un parametro che va sistemato, forse non va bene
+par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
+mar.res<-resid(model, type='martingale')
+plot(dataset$Age, mar.res,
+     xlab="Time", ylab="Martingale Residuals",
+     main="Check functional form of age")
+lines(lowess(dataset$Age, mar.res),col='red')
+
+library(splines)
+ms <- coxph(Surv(time, event > 0) ~ ns(Age, knots=c(20, 35, 45)), data = dataset)
+pred <- predict(ms, type="terms", se=TRUE)
+hfit <- pred$fit[,1]
+hse <- pred$se[,1]
+hmat <- cbind(hfit, hfit+1.96*hse,hfit-1.96*hse)
+o <- order(dataset$Age)
+matplot(dataset$Age[o], hmat[o, ], pch="*",col=c("red","orangered","orangered"), lwd=c(2,1,1),xlab = "Age", ylab="log hazard ratio",main="Check functional form of Age",type="l")
+
+ms <- coxph(Surv(time, event > 0) ~ Age, data = dataset)
+pred <- predict(ms, type="terms", se=TRUE)
+hfit <- pred$fit[,1]
+hse <- pred$se[,1]
+hmat <- cbind(hfit, hfit+1.96*hse,hfit-1.96*hse)
+o <- order(dataset$Age)
+matplot(dataset$Age[o], hmat[o, ], pch="*",col=c("blue","cornflowerblue","cornflowerblue"), lwd=c(2,1,1),type="l",add=T)
+
+legend("topright", c("natural spline", "linear"), col=c(2, 4), lwd=2, bty="n")
+
+# Sembra che non ci sia assolutamente nulla che rispetti il PH...
+# Anche sta roba boh
+
+model.s = coxph(formula = Surv(time, event) ~ strata(Diam) + strata(N) + strata(ER) + strata(Grade) + Age, data = dataset)
+summary(model)
+
