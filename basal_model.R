@@ -52,7 +52,7 @@ legend("bottomright", legend=c("Nelson-Aalen estimate", "-log(S(t))", "Baseline 
        col=c(1, 2, 3), lty=1, pch=c(1, 20, 5))
 
 # Creo il modello di cox
-model<-coxph(formula = Surv(time, event) ~ factor(Diam) + factor(N) + factor(ER) + factor(Grade) + Age, data = dataset)
+model<-coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age, data = dataset)
 summary(model)
 
 # Cosa vediamo dal summary
@@ -71,45 +71,21 @@ summary(model)
 # This model is not significantly different, by standard frequentist criteria, from no model at all.
 # Dobbiamo usare meno predittori?
 
-ggsurvplot(survfit(model), data = dataset, color = "#2E9FDF",
-           +            ggtheme = theme_minimal())
+ggsurvplot(survfit(model), data = dataset, palette = "#2E9FDF", ggtheme = theme_minimal())
 
 # Modello basale
-bas = basehaz(model,centered=FALSE)
+bas = basehaz(model, centered=FALSE)
 bas.surv<- exp(-bas[, 1])
 plot(bas$time, bas.surv, type='s', col=1, ylim=c(0, 1) , xlim=c(0, 18),lty=2, xlab='time', ylab='survival probability')
 
-# Azzardo proporzionale per Diam
-par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
-checkPH.Diam = cox.zph(model)[1]
-plot(checkPH.Diam, main="Check PH assumption of Diam")
-points(checkPH.Diam$x, checkPH.Diam$y, pch=16, col="lightgray")
-abline(h=0, lty=2, col=2)
+# Residui di Schoenfeld
+test.ph = cox.zph(model)
+ggcoxzph(test.ph)
 
-km.Diam = survfit(Surv(time, event) ~ factor(Diam), data=dataset)
-plot(km.Diam, col=c("black", "red"), fun="cloglog",ylab="log(-log(Survival))",xlab="log(time)",main="Check PH assumption of Diam")
+# Verifica dei residue con il metodo di Lin
+library(goftte)
+prop(model)
 
-# Azzardo proporzionale per N
-par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
-checkPH.N = cox.zph(model)[2]
-plot(checkPH.N, main="Check PH assumption of N")
-points(checkPH.N$x, checkPH.N$y, pch=16, col="lightgray")
-abline(h=0, lty=2, col=2)
-
-km.N = survfit(Surv(time, event) ~ factor(N), data=dataset)
-plot(km.N, col=c("black", "red"), fun="cloglog",ylab="log(-log(Survival))",xlab="log(time)",main="Check PH assumption of N")
-
-# Azzardo proporzionale per ER
-par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
-checkPH.ER = cox.zph(model)[3]
-plot(checkPH.ER, main="Check PH assumption of ER")
-points(checkPH.ER$x, checkPH.ER$y, pch=16, col="lightgray")
-abline(h=0, lty=2, col=2)
-
-km.ER = survfit(Surv(time, event) ~ factor(ER), data=dataset)
-plot(km.ER, col=c("black", "red"), fun="cloglog",ylab="log(-log(Survival))",xlab="log(time)",main="Check PH assumption of ER")
-
-# Azzardo proporzionale per Grade? Boh ha più di due fattori 
 
 # Forma funzionale di age 
 # Knots è un parametro che va sistemato, forse non va bene
@@ -139,9 +115,5 @@ matplot(dataset$Age[o], hmat[o, ], pch="*",col=c("blue","cornflowerblue","cornfl
 
 legend("topright", c("natural spline", "linear"), col=c(2, 4), lwd=2, bty="n")
 
-# Sembra che non ci sia assolutamente nulla che rispetti il PH...
-# Anche sta roba boh
 
-model.s = coxph(formula = Surv(time, event) ~ strata(Diam) + strata(N) + strata(ER) + strata(Grade) + Age, data = dataset)
-summary(model)
 
