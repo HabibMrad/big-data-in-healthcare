@@ -56,10 +56,10 @@ model<-coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age, 
 summary(model)
 
 # Cosa vediamo dal summary
-# Il valore exp(coef) è quello più importante
+# Il valore exp(coef) ? quello pi? importante
 # Vediamo che ad esempio Diam = 1 aumenta l'azzardo di un fattore pari a 1.497
-# Grade = 2 riduce l'azzardo di un fattore pari a 0.45, questo va bene perchè grade = 2 è benigno
-# Strano che l'età faccia 0.95, mi aspetto che l'età riduca la survival 
+# Grade = 2 riduce l'azzardo di un fattore pari a 0.45, questo va bene perch? grade = 2 ? benigno
+# Strano che l'et? faccia 0.95, mi aspetto che l'et? riduca la survival 
 # Non ho tante stelline quindi i test non sono molto significativi?
 # Visto che Age ha quasi uno nell'upper .95 dovrebbe significare che non influisce quasi per nulla sulla predizione
 
@@ -88,7 +88,7 @@ prop(model)
 
 
 # Forma funzionale di age 
-# Knots è un parametro che va sistemato, forse non va bene
+# Knots ? un parametro che va sistemato, forse non va bene
 par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
 mar.res<-resid(model, type='martingale')
 plot(dataset$Age, mar.res,
@@ -114,6 +114,3 @@ o <- order(dataset$Age)
 matplot(dataset$Age[o], hmat[o, ], pch="*",col=c("blue","cornflowerblue","cornflowerblue"), lwd=c(2,1,1),type="l",add=T)
 
 legend("topright", c("natural spline", "linear"), col=c(2, 4), lwd=2, bty="n")
-
-
-

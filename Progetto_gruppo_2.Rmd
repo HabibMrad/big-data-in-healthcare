@@ -1,0 +1,508 @@
+---
+title: "Progetto gruppo 2: BREAST CANCER"
+output: html_notebook
+---
+
+
+Da consegnare:
+
+1. Codice R
+
+2. Report dei risultati:
+  
+• Breve introduzione discorsiva allo studio (contesto clinico e obiettivo dell’analisi)
+  
+• Statistiche descrittive su tutte le variabili del campione in studio
+
+• Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio
+
+• Analisi principale dello studio:
+
+    • sviluppo del modello di rischio con covariate cliniche al basale (valutare forma funzionale delle variabili continue e assunzione «Proportional Hazards»)
+
+    • valutazione della performance del modello (calibrazione, discriminazione, Net Benefit) per la predizione del rischio di evento ad un time-point fisso (es. progetto 1: 5 anni; progetto 2: 12 mesi).
+
+    • sviluppo del modello di rischio che contiene anche il marker misurato longitudinalmente (progetto 1) o il set selezionato di variabili di espressione genica (progetto 2)
+
+    • Predizione del rischio di evento per 3 soggetti «tipo» (scelti casualmente nel dataset o nuovi ipotetici soggetti) basata sul nuovo modello
+
+    • Breve commento discorsivo ai risultati. Menzionare eventuali limiti dei dati e problematiche riscontrate durante analisi.
+
+
+###**Breve introduzione discorsiva allo studio (contesto clinico e obiettivo dell’analisi)**
+
+Scopo del progetto:
+Valutazione della performance predittiva di un modello di rischio con covariate cliniche e sviluppo di un modello analogo che include tra i predittori anche un set di variabili di espressione genica selezionate tramite regressione penalizzata. 
+
+DATASET: breast cancer
+
+Nr. osservazioni: 144
+
+Variabili:
+
+- time: tempo di follow-up libero da metastasi (in mesi).
+
+- event: indicatore di evento (1 = metastasi o morte; 0 = censura).
+
+- Diam: Diametro del tumore (2 livelli).
+
+- N: numero di linfonodi coinvolti (2 livelli).
+
+- ER: status del recettore di estrogeni (2 livelli). 
+
+- Grade: grado del tumore (tre livelli ordinati).
+
+- Age: età della paziente alla diagnosi (in anni).
+
+- TSPYL5 ... C20orf46: misura di espressione genica di 70 geni potenzialmente prognostici
+
+
+
+###**Operazioni preliminari**
+
+```{r}
+#carico le librerie necessarie
+library(survival)
+library(survminer)
+library(pander)
+```
+
+```{r}
+#carico il dataset
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+dataset = read.table("dataset.csv",  na.strings=".", sep = "\t",  header=T, row.names=NULL)
+```
+
+```{r}
+# Rimuovo l'id della riga
+dataset = dataset[, -1]
+
+# Prendo solo le covariate cliniche
+dataset = dataset[1:7]
+
+# Converto le variabili categoriche in categorie numeriche
+dataset$Diam = ifelse(dataset$Diam == "<=2cm", 0, 1)
+dataset$N = ifelse(dataset$N == "<4", 0, 1)
+dataset$ER = ifelse(dataset$ER == "Negative", 0, 1)
+dataset$Grade = ifelse(dataset$Grade == "Poorly diff", 0, 
+                       ifelse(dataset$Grade == "Intermediate", 1, 2))
+```
+
+```{r}
+VAR_NUMERIC <- c("time","event","Diam","N","ER","Grade","Age")
+```
+
+###**Statistiche descrittive su tutte le variabili del campione in studio**
+
+```{r}
+# dataset$Diam = factor(dataset$Diam)
+# dataset$N = factor(dataset$N)
+# dataset$ER = factor(dataset$ER)
+# dataset$Grade = factor(dataset$Grade)
+# dataset$event = factor(dataset$event)
+# 
+# attributes_mean = apply(data.matrix(dataset), 2, mean)
+# attributes_sd = apply(data.matrix(dataset), 2, sd)
+# attributes_median = apply(data.matrix(dataset), 2, median)
+
+# windows()
+# plot_intro(dataset)
+# windows()
+# plot_bar(dataset)
+# windows()
+# plot_histogram(dataset)
+# windows()
+# plot_correlation(dataset)
+
+#cormat = cor(data.matrix(dataset))
+
+#outcome_correlation = cormat[2, ]
+```
+
+```{r}
+#ema
+pander(summary(dataset[,VAR_NUMERIC]),big.mark=",") #-- statistiche descrittive
+```
+
+```{r}
+pander(cor(dataset[,VAR_NUMERIC]),big.mark=",") #-- matrice di correlazione
+```
+
+```{r}
+plot(dataset[,VAR_NUMERIC],pch=19,cex=.5) #-- scatter plot multivariato
+```
+
+```{r}
+par(mfrow=c(2,3)) 
+for (i in VAR_NUMERIC){
+  boxplot(dataset[,i],main=i,col="lightblue",ylab=i) 
+}
+```
+
+###**Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio**
+
+```{r}
+
+```
+##**Analisi principale dello studio**
+
+###**1. Sviluppo del modello di rischio con covariate cliniche al basale**
+
+Valutare forma funzionale delle variabili continue e assunzione «Proportional Hazards».
+
+```{r}
+# Kaplan-Meier
+fit = survfit(Surv(dataset$time, dataset$event) ~ 1)
+summary(fit)
+```
+
+```{r}
+par(mar=c(4, 4, 2, 2))
+plot(fit, xlab='time (months)', ylab='survival probability')
+title('Kaplan Meier estimate (pooled data)')
+```
+
+```{r}
+# Aalen-Nelson hazard cumulato
+na.haz = cumsum(fit$n.event / fit$n.risk)
+cbind(fit$time , na.haz)
+```
+
+```{r}
+plot(fit$time  , na.haz, type='s', xlab='time ', ylab='cumulative hazard')
+```
+
+```{r}
+# Relationship between survival and hazard
+cumhaz =  -log(fit$surv)
+plot(fit$time, cumhaz, type='s', ylim=c(0,1) , xlab='time', ylab='cumulative hazard')
+```
+
+```{r}
+# Basal hazard
+b.haz = basehaz(coxph(Surv(dataset$time, dataset$event) ~ 1, method="exact") )
+plot(b.haz$time  , b.haz$hazard, type='s', xlab='time', ylab='cumulative hazard')
+```
+
+```{r}
+# Contrast the findings
+plot(fit$time, na.haz, type='s', xlab='time (months)', ylab='cumulative hazard', ylim=c(0, 1))
+points(fit$time, na.haz)
+lines(fit$time, cumhaz, type='s',col=2)
+points(fit$time, cumhaz, pch=20,col=2)
+lines(b.haz$time, b.haz$hazard, type='s',col=3)
+points(b.haz$time, b.haz$hazard, pch=5,col=3)
+legend("bottomright", legend=c("Nelson-Aalen estimate", "-log(S(t))", "Baseline hazard from Cox"),
+       col=c(1, 2, 3), lty=1, pch=c(1, 20, 5))
+```
+
+```{r}
+# Creo il modello di cox
+model<-coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age, data = dataset)
+summary(model)
+```
+
+Cosa vediamo dal summary
+
+- Il valore exp(coef) ? quello pi? importante
+
+- Vediamo che ad esempio Diam = 1 aumenta l'azzardo di un fattore pari a 1.497 
+
+- Grade = 2 riduce l'azzardo di un fattore pari a 0.45, questo va bene perch? grade = 2 ? benigno
+
+- Strano che l'eta faccia 0.95, mi aspetto che l'eta riduca la survival 
+
+- Non ho tante stelline quindi i test non sono molto significativi?
+
+- Visto che Age ha quasi uno nell'upper .95 dovrebbe significare che non influisce quasi per nulla sulla predizione
+
+In your particular application, you are under-powered to test this many coefficients. 
+The usual rule of thumb in Cox or logistic regressions is to have about 15 events per predictor variable being considered. 
+(For this, interaction terms count as predictor variables.) Your 53 events thus would limit you to about 3 predictors,while your model includes 6. Note that your overall model does not reach standard statistical significance 
+(p-value is > 0.05 for the omnibus tests), so you should not be paying much attention to the individual regression coefficients anyway. 
+This model is not significantly different, by standard frequentist criteria, from no model at all.
+
+Dobbiamo usare meno predittori?
+
+```{r}
+ggsurvplot(survfit(model), data = dataset, palette = "#2E9FDF", ggtheme = theme_minimal())
+```
+
+```{r}
+# Modello basale
+bas = basehaz(model, centered=FALSE)
+bas.surv<- exp(-bas[, 1])
+plot(bas$time, bas.surv, type='s', col=1, ylim=c(0, 1) , xlim=c(0, 18),lty=2, xlab='time', ylab='survival probability')
+```
+
+```{r}
+# Residui di Schoenfeld
+test.ph = cox.zph(model)
+ggcoxzph(test.ph)
+```
+
+```{r}
+# Verifica dei residui con il metodo di Lin
+library(goftte)
+prop(model)
+```
+
+```{r}
+# Forma funzionale di age 
+# Knots ? un parametro che va sistemato, forse non va bene
+par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
+mar.res<-resid(model, type='martingale')
+plot(dataset$Age, mar.res,
+     xlab="Time", ylab="Martingale Residuals",
+     main="Check functional form of age")
+lines(lowess(dataset$Age, mar.res),col='red')
+
+library(splines)
+ms <- coxph(Surv(time, event > 0) ~ ns(Age, knots=c(20, 35, 45)), data = dataset)
+pred <- predict(ms, type="terms", se=TRUE)
+hfit <- pred$fit[,1]
+hse <- pred$se[,1]
+hmat <- cbind(hfit, hfit+1.96*hse,hfit-1.96*hse)
+o <- order(dataset$Age)
+matplot(dataset$Age[o], hmat[o, ], pch="*",col=c("red","orangered","orangered"), lwd=c(2,1,1),xlab = "Age", ylab="log hazard ratio",main="Check functional form of Age",type="l")
+
+ms <- coxph(Surv(time, event > 0) ~ Age, data = dataset)
+pred <- predict(ms, type="terms", se=TRUE)
+hfit <- pred$fit[,1]
+hse <- pred$se[,1]
+hmat <- cbind(hfit, hfit+1.96*hse,hfit-1.96*hse)
+o <- order(dataset$Age)
+matplot(dataset$Age[o], hmat[o, ], pch="*",col=c("blue","cornflowerblue","cornflowerblue"), lwd=c(2,1,1),type="l",add=T)
+
+legend("topright", c("natural spline", "linear"), col=c(2, 4), lwd=2, bty="n")
+```
+
+###**2. Valutazione della performance del modello** 
+
+es. calibrazione, discriminazione, Net Benefit. Per la predizione del rischio di evento ad un time-point fisso (es. 12 mesi).
+
+```{r}
+library(pROC)
+library(pec)
+
+model = coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age, data = dataset)
+summary(model)
+
+# Predictiveness --------------------------------------------------------------------------------
+fit = survfit(model, newdata = dataset)
+dataset$riskdeath = 1 - as.numeric(summary(fit, times = 12)$surv)
+
+dataset$event.12m = ifelse(dataset$time <= 12 & dataset$event == 1, 1, 0)
+
+estmodel = survfit(Surv(riskdeath, event.12m) ~ 1, data=dataset)
+
+
+# Predictiveness curve of model:
+plot((1 - estmodel$surv) * 100, estmodel$time, main = '', type = 'l', 
+     ylim = c(0,1), lwd = 3, ylab = 'r', cex.lab = 1.7, cex.axis = 1.7,
+     xlab = expression(paste('P(riskscore',''<='r)*100')), xaxt = "n", yaxt = "n", frame = F) 
+axis(2, at = c(0,0.2,0.4,0.6,0.8,1), labels = NA, pos = 0)
+axis(2, at = c(0,0.2,0.4,0.6,0.8,1), labels = c(0,0.2,0.4,0.6,0.8,1), cex.axis = 1.7, pos = 0)
+axis(1, at = c(0,20,40,60,80,100), labels = c(0,20,40,60,80,100), cex.axis = 1.7, pos = 0)
+
+
+# Predictiveness curve of a useless model:
+p = sum(dataset$event.12m) / dim(dataset)[1]
+lines(c(0, 100), c(p, p), lty = 2, lwd = 3, col = 'gray') 
+text(40, 0.1, labels = bquote(rho ==  .(round(p,3)*100) ~ '%'), cex = 1.7) 
+
+# Predictiveness curve of the ideal risk predictor:
+lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
+lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
+lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
+
+# Brier score
+brier_score = mean((dataset$event.12m - dataset$riskdeath) ^ 2)
+
+# Brier Score under strong calibration
+brier_score_sc <- mean(dataset$riskdeath * (1 - dataset$riskdeath))
+
+# Discrimination --------------------------------------------
+
+roc_model = roc(dataset$event.12m, dataset$riskdeath)
+plot(1 - roc_model$specificities, roc_model$sensitivities, 
+     type = 'l', ylab = 'TPF', xlab = 'FPF', lwd = 3, xaxt = "n", yaxt = "n", 
+     xlim = c(0,1), cex.lab = 1.7, frame = F)
+axis(1, at = c(0,0.25,0.5,0.75,1), labels = NA, pos = 0)
+axis(1, at = c(0,0.25,0.5,0.75,1), labels = c(0,0.25,0.5,0.75,1), cex.axis = 1.7, pos = 0)
+axis(2, at = c(0,0.25,0.5,0.75,1), labels = c(0,0.25,0.5,0.75,1), cex.axis = 1.7, pos = 0)
+lines(x = c(0, 1), y = c(0, 1))
+
+Youden = roc_model$sensitivities + roc_model$specificities - 1
+optimal.cut.off = roc_model$thresholds[Youden == max(Youden)]
+cbind(optimal.cut.off, Youden = max(Youden))
+points(1 - roc_model$specificities[roc_model$thresholds == optimal.cut.off],
+           roc_model$sensitivities[roc_model$thresholds == optimal.cut.off],
+           pch=0, cex=1.7)
+
+AUC = roc_model$auc
+
+# Brier score (adjusted for censoring) and the c-index. --------------------------------
+
+# Non so se vada
+model = coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age, data = dataset, x = T)
+summary(model)
+
+fit = survfit(model, newdata = dataset)
+dataset$riskdeath = 1 - as.numeric(summary(fit, times = 12)$surv)
+
+set.seed(10052019)
+PredError = pec(
+  model,
+  maxtime = 17.65913758,
+  formula = Surv(time, event == 1) ~ 1,
+  data = dataset,
+  cens.model = "marginal",
+  splitMethod = "bootcv",
+  B = 10,
+  verbose = TRUE
+)
+
+print(PredError, times = seq(0, 17.65913758, 1))
+
+par(mfrow = c(1,1))
+plot(PredError)
+
+```
+
+
+###**3. Sviluppo del modello di rischio che contiene anche il set selezionato di variabili di espressione genica**
+
+```{r}
+
+```
+
+###** 4. Predizione del rischio di evento per 3 soggetti «tipo» (scelti casualmente nel dataset o nuovi ipotetici soggetti) basata sul nuovo modello**
+
+```{r}
+
+```
+
+##**Breve commento discorsivo ai risultati.**
+
+Menzionare eventuali limiti dei dati e problematiche riscontrate durante analisi.
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
