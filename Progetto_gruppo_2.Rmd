@@ -29,7 +29,7 @@ Da consegnare:
     • Breve commento discorsivo ai risultati. Menzionare eventuali limiti dei dati e problematiche riscontrate durante analisi.
 
 
-###**Breve introduzione discorsiva allo studio (contesto clinico e obiettivo dell’analisi)**
+# **I. Breve introduzione discorsiva allo studio (contesto clinico e obiettivo dell’analisi)**
 
 Scopo del progetto:
 Valutazione della performance predittiva di un modello di rischio con covariate cliniche e sviluppo di un modello analogo che include tra i predittori anche un set di variabili di espressione genica selezionate tramite regressione penalizzata. 
@@ -57,18 +57,19 @@ Variabili:
 - TSPYL5 ... C20orf46: misura di espressione genica di 70 geni potenzialmente prognostici
 
 
+# **II. Statistiche descrittive **
+### **Operazioni preliminari**
 
-###**Operazioni preliminari**
 
 ```{r}
-#carico le librerie necessarie
+# carico le librerie necessarie
 library(survival)
 library(survminer)
 library(pander)
 ```
 
 ```{r}
-#carico il dataset
+# carico il dataset
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 dataset = read.table("dataset.csv",  na.strings=".", sep = "\t",  header=T, row.names=NULL)
 ```
@@ -88,87 +89,42 @@ dataset$Grade = ifelse(dataset$Grade == "Poorly diff", 0,
                        ifelse(dataset$Grade == "Intermediate", 1, 2))
 ```
 
-```{r}
-VAR_NUMERIC <- c("time","event","Diam","N","ER","Grade","Age")
-```
-
-###**Statistiche descrittive su tutte le variabili del campione in studio**
+### **Computazione statistiche**
 
 ```{r}
-# dataset$Diam = factor(dataset$Diam)
-# dataset$N = factor(dataset$N)
-# dataset$ER = factor(dataset$ER)
-# dataset$Grade = factor(dataset$Grade)
-# dataset$event = factor(dataset$event)
-# 
-# attributes_mean = apply(data.matrix(dataset), 2, mean)
-# attributes_sd = apply(data.matrix(dataset), 2, sd)
-# attributes_median = apply(data.matrix(dataset), 2, median)
-
-# windows()
-# plot_intro(dataset)
-# windows()
-# plot_bar(dataset)
-# windows()
-# plot_histogram(dataset)
-# windows()
-# plot_correlation(dataset)
-
-#cormat = cor(data.matrix(dataset))
-
-#outcome_correlation = cormat[2, ]
+pander(summary(dataset), big.mark=",") #-- statistiche 
 ```
 
 ```{r}
-#ema
-pander(summary(dataset[,VAR_NUMERIC]),big.mark=",") #-- statistiche descrittive
+plot(dataset, pch=19, cex=.5) #-- scatter plot multivariato
 ```
 
 ```{r}
-pander(cor(dataset[,VAR_NUMERIC]),big.mark=",") #-- matrice di correlazione
-```
-
-```{r}
-plot(dataset[,VAR_NUMERIC],pch=19,cex=.5) #-- scatter plot multivariato
-```
-
-```{r}
-par(mfrow=c(2,3)) 
-for (i in VAR_NUMERIC){
-  boxplot(dataset[,i],main=i,col="lightblue",ylab=i) 
+par(mfrow=c(2, 4)) 
+for (i in names(dataset)){
+  boxplot(dataset[, i], main=i, col="lightblue", ylab=i) 
 }
 ```
 
-###**Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio**
-
+### **III. Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio**
 ```{r}
-
+pander(cor(dataset),big.mark=",") #-- matrice di correlazione
 ```
-##**Analisi principale dello studio**
 
-###**1. Sviluppo del modello di rischio con covariate cliniche al basale**
-
-Valutare forma funzionale delle variabili continue e assunzione «Proportional Hazards».
+### **IV. Sviluppo del modello di rischio con covariate cliniche al basale**
 
 ```{r}
 # Kaplan-Meier
 fit = survfit(Surv(dataset$time, dataset$event) ~ 1)
-summary(fit)
-```
-
-```{r}
 par(mar=c(4, 4, 2, 2))
 plot(fit, xlab='time (months)', ylab='survival probability')
 title('Kaplan Meier estimate (pooled data)')
+
 ```
 
 ```{r}
 # Aalen-Nelson hazard cumulato
 na.haz = cumsum(fit$n.event / fit$n.risk)
-cbind(fit$time , na.haz)
-```
-
-```{r}
 plot(fit$time  , na.haz, type='s', xlab='time ', ylab='cumulative hazard')
 ```
 
@@ -195,9 +151,8 @@ points(b.haz$time, b.haz$hazard, pch=5,col=3)
 legend("bottomright", legend=c("Nelson-Aalen estimate", "-log(S(t))", "Baseline hazard from Cox"),
        col=c(1, 2, 3), lty=1, pch=c(1, 20, 5))
 ```
-
+#### Modello di Cox al basale
 ```{r}
-# Creo il modello di cox
 model<-coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age, data = dataset)
 summary(model)
 ```
@@ -284,6 +239,7 @@ es. calibrazione, discriminazione, Net Benefit. Per la predizione del rischio di
 ```{r}
 library(pROC)
 library(pec)
+source("stdca.R")
 
 model = coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age, data = dataset)
 summary(model)
@@ -367,6 +323,38 @@ print(PredError, times = seq(0, 17.65913758, 1))
 
 par(mfrow = c(1,1))
 plot(PredError)
+
+set.seed(1103)
+BootCindex <- cindex(model,
+                     formula = Surv(time, event == 1) ~ 1,
+                     data = dataset,
+                     eval.times = seq(1, 17.71, 1),                 
+                     cens.model="marginal",
+                     splitMethod="bootcv",
+                     B=10,
+                     verbose=TRUE)
+
+print(BootCindex)
+plot(BootCindex)
+
+netbenefit <- stdca(data = dataset, outcome = "event", ttoutcome = "time", timepoint = 12, 
+                    predictors = c("riskdeath"))
+
+par(mar = c(5, 4.5, 4, 1)) 
+# Net Benefit for model1:
+plot(netbenefit$net.benefit$threshold, netbenefit$net.benefit$riskdeath, type = "l", lwd = 3, 
+     xlim = c(0, 1), ylim = c(0, 0.20), xlab = "r", ylab = "NB(r)", xaxt = "n", yaxt = "n", 
+     cex.lab = 1.7, cex.axis = 1.6, frame = F)
+axis(1, at = c(0,0.2,0.4,0.6,0.8,1), labels = NA, pos = 0)
+axis(1, at = c(0,0.2,0.4,0.6,0.8,1), labels = c(0,0.2,0.4,0.6,0.8,1), cex.axis = 1.7, pos = 0)
+axis(2, at = c(0,0.05,0.1,0.15,0.2), labels = c(0,0.05,0.1,0.15,0.2), cex.axis = 1.7, pos = 0)
+
+
+# We add an extra axis on the top of the graph with the costs:
+axis(3, at = c(0,0.2,0.4,0.6,0.8,1), labels = c(0,0.25,0.67,1.5,4,'Inf'), cex.axis = 1.6)
+mtext("C", side = 3, line = 2.5, cex = 1.7, las = 1)
+
+legend('topright', c("riskdeath"), lwd = c(3, 3), lty = c(1, 3), col = c(1, 1), bty = 'n', cex = 1.7)
 
 ```
 
