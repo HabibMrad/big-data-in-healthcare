@@ -29,7 +29,7 @@ Da consegnare:
     • Breve commento discorsivo ai risultati. Menzionare eventuali limiti dei dati e problematiche riscontrate durante analisi.
 
 
-# **I. Breve introduzione discorsiva allo studio (contesto clinico e obiettivo dell’analisi)**
+# **1. Breve introduzione discorsiva allo studio (contesto clinico e obiettivo dell’analisi)**
 
 Scopo del progetto:
 Valutazione della performance predittiva di un modello di rischio con covariate cliniche e sviluppo di un modello analogo che include tra i predittori anche un set di variabili di espressione genica selezionate tramite regressione penalizzata. 
@@ -57,7 +57,7 @@ Variabili:
 - TSPYL5 ... C20orf46: misura di espressione genica di 70 geni potenzialmente prognostici
 
 
-# **II. Statistiche descrittive **
+# **2. Statistiche descrittive **
 ### **Operazioni preliminari**
 
 
@@ -106,12 +106,12 @@ for (i in names(dataset)){
 }
 ```
 
-### **III. Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio**
+### **3. Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio**
 ```{r}
 pander(cor(dataset),big.mark=",") #-- matrice di correlazione
 ```
 
-### **IV. Sviluppo del modello di rischio con covariate cliniche al basale**
+### **4. Sviluppo del modello di rischio con covariate cliniche al basale**
 
 ```{r}
 # Kaplan-Meier
@@ -159,11 +159,11 @@ summary(model)
 
 Cosa vediamo dal summary
 
-- Il valore exp(coef) ? quello pi? importante
+- Il valore exp(coef) è quello più importante
 
 - Vediamo che ad esempio Diam = 1 aumenta l'azzardo di un fattore pari a 1.497 
 
-- Grade = 2 riduce l'azzardo di un fattore pari a 0.45, questo va bene perch? grade = 2 ? benigno
+- Grade = 2 riduce l'azzardo di un fattore pari a 0.45, questo va bene perchè grade = 2 è benigno
 
 - Strano che l'eta faccia 0.95, mi aspetto che l'eta riduca la survival 
 
@@ -204,7 +204,7 @@ prop(model)
 
 ```{r}
 # Forma funzionale di age 
-# Knots ? un parametro che va sistemato, forse non va bene
+# Knots è un parametro che va sistemato, forse non va bene
 par(mfrow=c(1, 2),mar=c(4, 4, 2, 2))
 mar.res<-resid(model, type='martingale')
 plot(dataset$Age, mar.res,
@@ -232,7 +232,7 @@ matplot(dataset$Age[o], hmat[o, ], pch="*",col=c("blue","cornflowerblue","cornfl
 legend("topright", c("natural spline", "linear"), col=c(2, 4), lwd=2, bty="n")
 ```
 
-### **V. Valutazione della performance del modello** 
+### **5. Valutazione della performance del modello** 
 
 es. calibrazione, discriminazione, Net Benefit. Per la predizione del rischio di evento ad un time-point fisso (es. 12 mesi).
 
@@ -243,7 +243,9 @@ source("stdca.R")
 
 model = coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age, data = dataset)
 summary(model)
+```
 
+```{r}
 # Predictiveness --------------------------------------------------------------------------------
 fit = survfit(model, newdata = dataset)
 dataset$riskdeath = 1 - as.numeric(summary(fit, times = 12)$surv)
@@ -252,7 +254,6 @@ dataset$event.12m = ifelse(dataset$time <= 12 & dataset$event == 1, 1, 0)
 
 estmodel = survfit(Surv(riskdeath, event.12m) ~ 1, data=dataset)
 
-
 # Predictiveness curve of model:
 plot((1 - estmodel$surv) * 100, estmodel$time, main = '', type = 'l', 
      ylim = c(0,1), lwd = 3, ylab = 'r', cex.lab = 1.7, cex.axis = 1.7,
@@ -260,7 +261,6 @@ plot((1 - estmodel$surv) * 100, estmodel$time, main = '', type = 'l',
 axis(2, at = c(0,0.2,0.4,0.6,0.8,1), labels = NA, pos = 0)
 axis(2, at = c(0,0.2,0.4,0.6,0.8,1), labels = c(0,0.2,0.4,0.6,0.8,1), cex.axis = 1.7, pos = 0)
 axis(1, at = c(0,20,40,60,80,100), labels = c(0,20,40,60,80,100), cex.axis = 1.7, pos = 0)
-
 
 # Predictiveness curve of a useless model:
 p = sum(dataset$event.12m) / dim(dataset)[1]
@@ -278,12 +278,17 @@ brier_score = mean((dataset$event.12m - dataset$riskdeath) ^ 2)
 # Brier Score under strong calibration
 brier_score_sc <- mean(dataset$riskdeath * (1 - dataset$riskdeath))
 
+```
+
+```{r}
 # Discrimination --------------------------------------------
 
 roc_model = roc(dataset$event.12m, dataset$riskdeath)
+
 plot(1 - roc_model$specificities, roc_model$sensitivities, 
      type = 'l', ylab = 'TPF', xlab = 'FPF', lwd = 3, xaxt = "n", yaxt = "n", 
      xlim = c(0,1), cex.lab = 1.7, frame = F)
+
 axis(1, at = c(0,0.25,0.5,0.75,1), labels = NA, pos = 0)
 axis(1, at = c(0,0.25,0.5,0.75,1), labels = c(0,0.25,0.5,0.75,1), cex.axis = 1.7, pos = 0)
 axis(2, at = c(0,0.25,0.5,0.75,1), labels = c(0,0.25,0.5,0.75,1), cex.axis = 1.7, pos = 0)
@@ -291,13 +296,18 @@ lines(x = c(0, 1), y = c(0, 1))
 
 Youden = roc_model$sensitivities + roc_model$specificities - 1
 optimal.cut.off = roc_model$thresholds[Youden == max(Youden)]
+
 cbind(optimal.cut.off, Youden = max(Youden))
+
 points(1 - roc_model$specificities[roc_model$thresholds == optimal.cut.off],
            roc_model$sensitivities[roc_model$thresholds == optimal.cut.off],
            pch=0, cex=1.7)
 
 AUC = roc_model$auc
 
+```
+
+```{r}
 # Brier score (adjusted for censoring) and the c-index. --------------------------------
 
 # Non so se vada
@@ -341,14 +351,14 @@ netbenefit <- stdca(data = dataset, outcome = "event", ttoutcome = "time", timep
                     predictors = c("riskdeath"))
 
 par(mar = c(5, 4.5, 4, 1)) 
+
 # Net Benefit for model1:
-plot(netbenefit$net.benefit$threshold, netbenefit$net.benefit$riskdeath, type = "l", lwd = 3, 
-     xlim = c(0, 1), ylim = c(0, 0.20), xlab = "r", ylab = "NB(r)", xaxt = "n", yaxt = "n", 
-     cex.lab = 1.7, cex.axis = 1.6, frame = F)
+plot(netbenefit$net.benefit$threshold, netbenefit$net.benefit$riskdeath, type = "l", lwd = 3, xlim = c(0, 1), ylim = c(0, 0.20), xlab = "r", ylab = "NB(r)", xaxt = "n", yaxt = "n", cex.lab = 1.7, cex.axis = 1.6, frame = F)
+
 axis(1, at = c(0,0.2,0.4,0.6,0.8,1), labels = NA, pos = 0)
 axis(1, at = c(0,0.2,0.4,0.6,0.8,1), labels = c(0,0.2,0.4,0.6,0.8,1), cex.axis = 1.7, pos = 0)
-axis(2, at = c(0,0.05,0.1,0.15,0.2), labels = c(0,0.05,0.1,0.15,0.2), cex.axis = 1.7, pos = 0)
 
+axis(2, at = c(0,0.05,0.1,0.15,0.2), labels = c(0,0.05,0.1,0.15,0.2), cex.axis = 1.7, pos = 0)
 
 # We add an extra axis on the top of the graph with the costs:
 axis(3, at = c(0,0.2,0.4,0.6,0.8,1), labels = c(0,0.25,0.67,1.5,4,'Inf'), cex.axis = 1.6)
@@ -359,8 +369,8 @@ legend('topright', c("riskdeath"), lwd = c(3, 3), lty = c(1, 3), col = c(1, 1), 
 ```
 
 ### **6. Regressione penalizzata su set di variabili di espressione genica** 
-```{r}
 
+```{r}
 library(survival)
 library(corrplot)
 library(glmnet)
@@ -375,15 +385,13 @@ dataset = dataset[, -1]
 # Prendo solo le covariate di espressione genica, il tempo e l'outcome
 dataset = dataset[c(1, 2, 8:length(dataset))]
 head(dataset)
-
 ```
 
 #### Kaplan-Meier
 ```{r}
-
 fit<-survfit(Surv(time, event) ~ 1, data=dataset)
 par(mar=c(4,4,2,2))
-plot(fit, fun="F", xlab='Time since treatment start (months)', ylab='Probability of response',ylim=c(0,1))
+plot(fit, fun="F", xlab='Time since treatment start (months)', ylab='Probability of event',ylim=c(0,1))
 ```
 #### Explore the correlation between the proteomic (forse non sono proteomic) features.
 ```{r}
@@ -465,6 +473,7 @@ cv.lasso <- cv.glmnet(x = X[, -1], y = Surv(dataset$time, dataset$event), family
 plot(cv.lasso$lambda, cv.lasso$cvm, type = "l", lwd = 3, xlab = bquote(lambda), ylab = "Partial Likelihood Deviance")
 points(cv.lasso$lambda[which.min(cv.lasso$cvm)], min(cv.lasso$cvm), pch = 16, col = 2)
 ```
+
 ```{r}
 opt.lambda <- cv.lasso$lambda[which.min(cv.lasso$cvm)]
 opt.lambda.coef <- as.numeric(coef(cv.lasso, s=opt.lambda))
@@ -525,13 +534,25 @@ cbind(features=results$features, univariate.HR=results$HR, lasso.HR, el.HR,adlas
 ```
 
 
+### **7. sviluppo del modello di rischio che contiene anche il set selezionato di variabili di espressione genica **
+
+```{r}
+
+```
 
 
+### **8. Predizione del rischio di evento per 3 soggetti «tipo» (scelti casualmente nel dataset o nuovi ipotetici soggetti) basata sul nuovo modello**
+
+```{r}
+
+```
 
 
+### **9. Breve commento discorsivo ai risultati. Menzionare eventuali limiti dei dati e problematiche riscontrate durante analisi.**
 
+```{r}
 
-
+```
 
 
 
