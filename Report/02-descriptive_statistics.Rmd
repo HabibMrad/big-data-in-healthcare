@@ -2,14 +2,13 @@
 ## Statistiche descrittive
 ### Operazioni preliminari
 
-```{r}
+Il package pander viene utilizzato per renderizzare in maniera elegante i metodi standard di R.
+```{r warning=FALSE}
 # carico le librerie necessarie
-options(warn=-1)
-library("survival")
-library("survminer")
 library("pander")
 ```
 
+Carichiamo il dataset.
 ```{r}
 # carico il dataset
 dataset <-
@@ -22,6 +21,7 @@ dataset <-
   )
 ```
 
+Inizialmente calcoliamo le statistiche relative solamente alle covariate cliniche.
 ```{r}
 # Rimuovo l'id della riga
 dataset <- dataset[,-1]
@@ -38,15 +38,18 @@ dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
                         ifelse(dataset$Grade == "Intermediate", 1, 2))
 ```
 
-### **Computazione statistiche**
+### Computazione statistiche
 
 ```{r}
 pander(summary(dataset), big.mark = ",") #-- statistiche 
 ```
+Dalle statistiche vediamo che il tempo massimo di follow-up è di quasi 18 mesi e abbiamo più censure che eventi (media < 0.5).
+\newpage
 
 ```{r}
 plot(dataset, pch = 19, cex = .5) #-- scatter plot multivariato
 ```
+\newpage
 
 ```{r}
 par(mfrow = c(2, 4))

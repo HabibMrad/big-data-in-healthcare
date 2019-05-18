@@ -2,6 +2,11 @@
 
 ## Sviluppo del modello di rischio con covariate cliniche al basale
 
+```{r warning=FALSE}
+library("survival")
+library("survminer")
+```
+
 ```{r}
 # Kaplan-Meier
 fit <- survfit(Surv(dataset$time, dataset$event) ~ 1)

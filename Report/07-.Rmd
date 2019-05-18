@@ -6,7 +6,6 @@ library("survival")
 library("survminer")
 
 # carico il dataset
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 dataset = read.table(
   "../dataset.csv",
   na.strings = ".",
