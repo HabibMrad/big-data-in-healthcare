@@ -1,0 +1,295 @@
+# Capitolo 6
+## Regressione penalizzata su set di variabili di espressione genica
+
+```{r include=FALSE}
+library("survival")
+library("corrplot")
+library("glmnet")
+
+# carico il dataset
+dataset <- read.table(
+  "../dataset.csv",
+  na.strings = ".",
+  sep = "\t",
+  header = T,
+  row.names = NULL
+)
+
+# Rimuovo l'id della riga
+dataset <- dataset[,-1]
+
+# Prendo solo le covariate di espressione genica, il tempo e l'outcome
+dataset <- dataset[c(1, 2, 8:length(dataset))]
+head(dataset)
+```
+
+#### Kaplan-Meier
+```{r}
+fit <- survfit(Surv(time, event) ~ 1, data = dataset)
+
+par(mar = c(4, 4, 2, 2))
+plot(
+  fit,
+  fun = "F",
+  xlab = 'Time since treatment start (months)',
+  ylab = 'Probability of event',
+  ylim = c(0, 1)
+)
+```
+#### Explore the correlation between the proteomic (forse non sono proteomic) features.
+```{r,  fig.width = 7, fig.height = 7}
+corrs <- cor(dataset[, 3:72])
+a <- apply(corrs, 1, function(x) abs(x) > 0.75 & abs(x) < 1)
+# variables with a correlation >0.75 with at least another variable
+b <- rowSums(a) > 0
+vars <- names(b[b == T])
+corrplot(cor(dataset[, vars]), method = "number")
+```
+#### Evaluate the association between each proteomic (forse) feature and the outcome using univariate Cox models.
+```{r}
+vars <- names(dataset[, 3:72])
+output <- lapply(vars, function(var) {
+  formula    <- as.formula(paste("Surv(time, event) ~ ", var))
+  fit.uni    <- coxph(formula, data = dataset)
+  beta       <- coef(fit.uni)
+  se         <- sqrt(diag(fit.uni$var))
+  CI         <- round(exp(confint(fit.uni)), 3)
+  round(c(exp(beta), CI, p = 1 - pchisq((beta / se) ^ 2, 1)), 3)
+})
+results <- as.data.frame(matrix(unlist(output), ncol = 4, byrow = T))
+names(results) <- c("HR", "lower95%CI", "upper95%CI", "p")
+results$features <- vars
+results
+```
+
+#### According to the results of the univariate analysis, find which features have a significant association with the outcome at 5% level. Check again which features would be selected after the application of a method to adjust for multiple comparisons by controlling the Family-Wise Error Rate (FWER, e.g. Holm procedure) or the False Discovery Rate (FDR, e.g. Benjamini-Hochberg procedure).
+```{r}
+results[results$p < 0.05,]
+```
+
+```{r}
+results$q.holm <- p.adjust(results$p, method = "holm")
+results$q.BH <- p.adjust(results$p, method = "BH")
+
+results[results$q.holm < 0.05, ]
+```
+
+```{r}
+results[results$q.BH < 0.05, ]
+```
+
+#### Fit a multiple Cox model with Ridge penalty. Plot the estimated coefficients at each value of the shrinkage parameter lambda.
+```{r}
+X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
+
+rigde.pen <-
+  glmnet(
+    x = X[,-1],
+    y = Surv(dataset$time, dataset$event),
+    family = "cox",
+    alpha = 0,
+    nlambda = 100
+  )
+
+lambdas <- rigde.pen$lambda
+
+par(mar = c(4, 4, 5, 2))
+plot(
+  lambdas,
+  lambdas,
+  type = "n",
+  xlab = bquote(beta),
+  xlim = range(rigde.pen$beta),
+  ylab = bquote(lambda),
+  ylim = rev(range(lambdas)),
+  yaxs = "i",
+  log = "y"
+)
+abline(v = 0, lwd = 4)
+
+for (i in 1:nrow(rigde.pen$beta))
+  lines(rigde.pen$beta[i,], lambdas, col = i, lwd = 2)
+
+mtext(
+  rownames(rigde.pen$beta),
+  3,
+  at = rigde.pen$beta[, 100],
+  line = .2,
+  col = 1:nrow(rigde.pen$beta),
+  font = 2,
+  las = 3,
+  adj = 0,
+  cex = .75
+)
+```
+#### Fit a multiple Cox model with Lasso penalty. Plot the estimated coefficients at each value of the shrinkage parameter lambda.
+```{r}
+X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
+
+lasso.pen <-
+  glmnet(
+    x = X[,-1],
+    y = Surv(dataset$time, dataset$event),
+    family = "cox",
+    alpha = 1,
+    nlambda = 100
+  )
+
+lambdas <- lasso.pen$lambda
+
+par(mar = c(4, 4, 5, 2))
+plot(
+  lambdas,
+  lambdas,
+  type = "n",
+  xlab = bquote(beta),
+  xlim = range(lasso.pen$beta),
+  ylab = bquote(lambda),
+  ylim = rev(range(lambdas)),
+  yaxs = "i",
+  log = "y"
+)
+abline(v = 0, lwd = 4)
+
+for (i in 1:nrow(lasso.pen$beta))
+  lines(lasso.pen$beta[i,], lambdas, col = i, lwd = 2)
+
+mtext(
+  rownames(lasso.pen$beta),
+  3,
+  at = lasso.pen$beta[, length(lambdas)],
+  line = .2,
+  col = 1:nrow(lasso.pen$beta),
+  font = 2,
+  las = 3,
+  adj = 0,
+  cex = .75
+)
+```
+#### Fit a multiple Cox model with Lasso penalty using cross validation to find the optimal value of the shrinkage parameter. Find which features would be selected using the optimal lambda.
+```{r}
+X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
+set.seed(16052019)
+
+cv.lasso <-
+  cv.glmnet(
+    x = X[,-1],
+    y = Surv(dataset$time, dataset$event),
+    family = 'cox',
+    nfold = 10,
+    alpha = 1
+  )
+
+plot(
+  cv.lasso$lambda,
+  cv.lasso$cvm,
+  type = "l",
+  lwd = 3,
+  xlab = bquote(lambda),
+  ylab = "Partial Likelihood Deviance"
+)
+
+points(cv.lasso$lambda[which.min(cv.lasso$cvm)],
+       min(cv.lasso$cvm),
+       pch = 16,
+       col = 2)
+```
+
+```{r}
+opt.lambda <- cv.lasso$lambda[which.min(cv.lasso$cvm)]
+opt.lambda.coef <- as.numeric(coef(cv.lasso, s = opt.lambda))
+
+# save coefficients (as HRs):
+lasso.HR <- round(exp(opt.lambda.coef), 3)
+
+#selected features:
+rownames(coef(cv.lasso))[opt.lambda.coef != 0]
+```
+
+#### Fit a multiple Cox model with Elastic Net penalty (set alpha=0.5) using cross validation to find the optimal value of the shrinkage parameter. Find which features would be selected using the optimal lambda.
+
+```{r}
+X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
+set.seed(16052019)
+
+cv.el <-
+  cv.glmnet(
+    x = X[,-1],
+    y = Surv(dataset$time, dataset$event),
+    family = 'cox',
+    nfold = 10,
+    alpha = 0.5
+  )
+
+plot(
+  cv.el$lambda,
+  cv.el$cvm,
+  type = "l",
+  lwd = 3,
+  xlab = bquote(lambda),
+  ylab = "Partial Likelihood Deviance"
+)
+points(cv.el$lambda[which.min(cv.el$cvm)], min(cv.el$cvm), pch = 16, col = 2)
+```
+```{r}
+opt.lambda <- cv.el$lambda[which.min(cv.el$cvm)]
+opt.lambda.coef <- as.numeric(coef(cv.el, s = opt.lambda))
+
+#selected features:
+rownames(coef(cv.el))[opt.lambda.coef != 0]
+
+# save coefficients (as HRs):
+el.HR <- round(exp(opt.lambda.coef), 3)
+```
+
+#### Fit a multiple Cox model with Adaptive Lasso penalty (use the inverse of the absolute value of the coefficients from a model with a Lasso penalty as features-specific penalties) using cross validation to find the optimal value of the shrinkage parameter. Find which features would be selected using the optimal lambda.
+
+```{r}
+X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
+set.seed(16052019)
+
+cv.lasso1 <-
+  cv.glmnet(
+    x = X[,-1],
+    y = Surv(dataset$time, dataset$event),
+    family = 'cox',
+    nfold = 10,
+    alpha = 1
+  )
+
+best.coef <-
+  as.numeric(coef(cv.lasso1, s = cv.lasso1$lambda[which.min(cv.lasso1$cvm)]))
+round(best.coef, 3)
+```
+
+```{r}
+set.seed(16052019)
+cv.adlasso <-
+  cv.glmnet(
+    x = X[,-1],
+    y = Surv(dataset$time, dataset$event),
+    family = 'cox',
+    penalty.factor = 1 / abs(best.coef),
+    nfold = 10,
+    alpha = 1
+  )
+
+opt.lambda <- cv.adlasso$lambda[which.min(cv.adlasso$cvm)]
+opt.lambda.coef <- as.numeric(coef(cv.adlasso, s = opt.lambda))
+
+# save coefficients (as HRs):
+adlasso.HR <- round(exp(opt.lambda.coef), 3)
+
+# selected features:
+rownames(coef(cv.adlasso))[opt.lambda.coef!=0]
+```
+#### Compare the selected features and the estimated association parameters (HRs) according to all penalized models and the univariate analysis
+```{r}
+cbind(
+  features = results$features,
+  univariate.HR = results$HR,
+  lasso.HR,
+  el.HR,
+  adlasso.HR
+)
+```

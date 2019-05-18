@@ -1,0 +1,38 @@
+# Capitolo 3
+## Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio
+
+```{r include=FALSE}
+# carico le librerie necessarie
+options(warn=-1)
+library("survival")
+library("survminer")
+library("pander")
+
+# carico il dataset
+dataset <-
+  read.table(
+    "../dataset.csv",
+    na.strings = ".",
+    sep = "\t",
+    header = T,
+    row.names = NULL
+  )
+
+# Rimuovo l'id della riga
+dataset <- dataset[,-1]
+
+# Prendo solo le covariate cliniche
+dataset <- dataset[1:7]
+
+# Converto le variabili categoriche in categorie numeriche
+dataset$Diam <- ifelse(dataset$Diam == "<=2cm", 0, 1)
+dataset$N <- ifelse(dataset$N == "<4", 0, 1)
+dataset$ER <- ifelse(dataset$ER == "Negative", 0, 1)
+dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
+                        0,
+                        ifelse(dataset$Grade == "Intermediate", 1, 2))
+```
+
+```{r}
+pander(cor(dataset), big.mark = ",") #-- matrice di correlazione
+```

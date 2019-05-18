@@ -1,0 +1,92 @@
+# Capitolo 7
+## sviluppo del modello di rischio che contiene anche il set selezionato di variabili di espressione genica
+
+```{r}
+library("survival")
+library("survminer")
+
+# carico il dataset
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+dataset = read.table(
+  "../dataset.csv",
+  na.strings = ".",
+  sep = "\t",
+  header = T,
+  row.names = NULL
+)
+```
+
+```{r}
+# Rimuovo l'id della riga
+dataset <- dataset[,-1]
+
+# Converto le variabili categoriche in categorie numeriche
+dataset$Diam <- ifelse(dataset$Diam == "<=2cm", 0, 1)
+dataset$N <- ifelse(dataset$N == "<4", 0, 1)
+dataset$ER <- ifelse(dataset$ER == "Negative", 0, 1)
+dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
+                        0,
+                        ifelse(dataset$Grade == "Intermediate", 1, 2))
+```
+
+```{r}
+idx_genic <- c(8:77)
+idx_genic <- idx_genic[adlasso.HR != 1]
+
+# Scelgo le feature geniche in base all'adaptive lasso
+dataset <- dataset[, c(1:7, idx_genic)]
+
+```
+
+```{r}
+formula <- paste("Diam + N + ER + factor(Grade) + Age",
+                 paste(names(dataset[, 8:length(dataset)]), collapse = ' + '),
+                 sep = " + ")
+model <-
+  coxph(
+    formula = Surv(time, event) ~ Diam + N + ER + Grade + Age + Contig63649_RC + QSCN6L1 +
+      Contig32125_RC + SCUBE2 + OXCT1 + MMP9 + RUNDC1 + KNTC2 +
+      SERF1A + GPR180 + RAB6B + ZNF533 + RTN4RL1 + MTDH + Contig40831_RC +
+      COL4A2 + STK32B + GPR126 + SLC2A3 + PECI.1 + ORC6L + RFC4 + MS4A7 +
+      PITRM1 + IGFBP5.1 + PRC1 + Contig20217_RC + EGLN1 + ESM1,
+    data = dataset
+  )
+summary(model)
+```
+```{r}
+ggsurvplot(
+  survfit(model),
+  data = dataset,
+  palette = "#2E9FDF",
+  ggtheme = theme_minimal()
+)
+```
+
+```{r}
+# Modello basale
+bas <- basehaz(model, centered = FALSE)
+bas.surv <- exp(-bas[, 1])
+plot(
+  bas$time,
+  bas.surv,
+  type = 's',
+  col = 1,
+  ylim = c(0, 1) ,
+  xlim = c(0, 18),
+  lty = 2,
+  xlab = 'time',
+  ylab = 'survival probability'
+)
+```
+
+```{r}
+# Residui di Schoenfeld per variabili geniche 
+# DA FARE
+
+```
+
+```{r}
+# Verifica dei residui con il metodo di Lin
+library("goftte")
+prop(model)
+```

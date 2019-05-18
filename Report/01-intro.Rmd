@@ -1,0 +1,53 @@
+# Capitolo 1
+## Breve introduzione discorsiva allo studio
+Da consegnare:
+
+1. Codice R
+
+2. Report dei risultati:
+  
+• Breve introduzione discorsiva allo studio (contesto clinico e obiettivo dell’analisi)
+  
+• Statistiche descrittive su tutte le variabili del campione in studio
+
+• Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio
+
+• Analisi principale dello studio:
+
+    • sviluppo del modello di rischio con covariate cliniche al basale (valutare forma funzionale delle variabili continue e assunzione «Proportional Hazards»)
+
+    • valutazione della performance del modello (calibrazione, discriminazione, Net Benefit) per la predizione del rischio di evento ad un time-point fisso (es. progetto 1: 5 anni; progetto 2: 12 mesi).
+
+    • sviluppo del modello di rischio che contiene anche il marker misurato longitudinalmente (progetto 1) o il set selezionato di variabili di espressione genica (progetto 2)
+
+    • Predizione del rischio di evento per 3 soggetti «tipo» (scelti casualmente nel dataset o nuovi ipotetici soggetti) basata sul nuovo modello
+
+    • Breve commento discorsivo ai risultati. Menzionare eventuali limiti dei dati e problematiche riscontrate durante analisi.
+
+
+Scopo del progetto:
+Valutazione della performance predittiva di un modello di rischio con covariate cliniche e sviluppo di un modello analogo che include tra i predittori anche un set di variabili di espressione genica selezionate tramite regressione penalizzata. 
+
+DATASET: breast cancer
+
+Nr. osservazioni: 144
+
+Variabili:
+
+- time: tempo di follow-up libero da metastasi (in mesi).
+
+- event: indicatore di evento (1 = metastasi o morte; 0 = censura).
+
+- Diam: Diametro del tumore (2 livelli).
+
+- N: numero di linfonodi coinvolti (2 livelli).
+
+- ER: status del recettore di estrogeni (2 livelli). 
+
+- Grade: grado del tumore (tre livelli ordinati).
+
+- Age: età della paziente alla diagnosi (in anni).
+
+- TSPYL5 ... C20orf46: misura di espressione genica di 70 geni potenzialmente prognostici
+
+
