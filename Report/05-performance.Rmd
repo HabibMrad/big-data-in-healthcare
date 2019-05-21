@@ -1,18 +1,45 @@
-# Capitolo 5
-## Valutazione della performance del modello
+# Valutazione della performance del modello
 
-es. calibrazione, discriminazione, Net Benefit. Per la predizione del rischio di evento ad un time-point fisso (es. 12 mesi).
+```{r warning=FALSE, include=FALSE}
+dataset <-
+  read.table(
+    "../dataset.csv",
+    na.strings = ".",
+    sep = "\t",
+    header = T,
+    row.names = NULL
+  )
 
-```{r}
+# Rimuovo l'id della riga
+dataset <- dataset[,-1]
+
+# Prendo solo le covariate cliniche
+dataset <- dataset[1:7]
+
+# Converto le variabili categoriche in categorie numeriche
+dataset$Diam <- ifelse(dataset$Diam == "<=2cm", 0, 1)
+dataset$N <- ifelse(dataset$N == "<4", 0, 1)
+dataset$ER <- ifelse(dataset$ER == "Negative", 0, 1)
+dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
+                        0,
+                        ifelse(dataset$Grade == "Intermediate", 1, 2))
+```
+
+Cominciamo ricalcolando il modello di cox come già fatto in precedenza:
+```{r message=FALSE, warning=FALSE}
 library("pROC")
 library("pec")
+library("survival")
 source("../stdca.R")
 
 model <- coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age,
               data = dataset)
-summary(model)
 ```
 
+## Calibrazione
+### Predictiveness curve
+
+Calcoliamo il rischio di morte al tempo t = 12 mesi.
 ```{r}
 # Predictiveness
 fit <- survfit(model, newdata = dataset)
@@ -21,9 +48,13 @@ dataset$riskdeath <- 1 - as.numeric(summary(fit, times = 12)$surv)
 dataset$event.12m <- ifelse(dataset$time <= 12 &
                              dataset$event == 1, 1, 0)
 
+# probabilità cumulata
 estmodel <- survfit(Surv(riskdeath, event.12m) ~ 1, data = dataset)
+```
 
-# Predictiveness curve of model:
+Valutiamo la calibrazione del modello tramite predictiveness curve.
+```{r}
+# Predictiveness curve del modello
 plot((1 - estmodel$surv) * 100,
      estmodel$time,
      main = '',
@@ -77,17 +108,25 @@ text(40, 0.1, labels = bquote(rho ==  .(round(p, 3) * 100) ~ '%'), cex = 1.7)
 lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
 lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
 lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
+```
+Discussione dei risultati bla bla bla
 
-# Brier score
+### Brier score
+Valutiamo il Brier score:
+```{r}
 brier_score <- mean((dataset$event.12m - dataset$riskdeath) ^ 2)
 
 # Brier Score under strong calibration
 brier_score_sc <- mean(dataset$riskdeath * (1 - dataset$riskdeath))
 
+print(paste("Brier score: ", brier_score))
+print(paste("Brier score under strong calibration: ", brier_score_sc))
 ```
+Il valore del Brier score è più vicino allo zero che all'uno e ciò indica che il modello è ben calibrato.
+
+## Discriminazione
 
 ```{r}
-# Discrimination --------------------------------------------
 roc_model <- roc(dataset$event.12m, dataset$riskdeath)
 
 plot(

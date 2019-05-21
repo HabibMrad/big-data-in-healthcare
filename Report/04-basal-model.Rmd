@@ -1,11 +1,10 @@
-# Capitolo 4
-
-## Sviluppo del modello di rischio con covariate cliniche al basale
+# Sviluppo del modello di rischio con covariate cliniche al basale
 
 ```{r message=FALSE, warning=FALSE}
 library("survival")
 library("survminer")
 ```
+
 ```{r include=FALSE}
 dataset <-
   read.table(
@@ -30,7 +29,7 @@ dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
                         0,
                         ifelse(dataset$Grade == "Intermediate", 1, 2))
 ```
-### Test non parametrici
+## Test non parametrici
 Iniziamo testando la funzione di sopravvivenza tramite Kaplan-Meier, utilizzando come approssimatore della varianza la formula di Greenwood.
 ```{r}
 # Kaplan-Meier
@@ -105,7 +104,7 @@ legend("bottomright", legend = c("Nelson-Aalen estimateì", "-log(S(t))", "Basel
 ```
 Notiamo che i test proposti non differiscono quasi di nulla (Perchè ?).
 
-### Modello di Cox al basale
+## Modello di Cox al basale
 Costruiamo il modello di Cox utilizzando le covariate cliniche.
 ```{r}
 model <- coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age,
@@ -118,11 +117,7 @@ Age e Grade = 1 hanno un coefficiente vicino allo zero e quindi danno un contrib
 Notiamo inoltre che i test statistici hanno una significatività molto bassa (solo un p-value < 0.05), questo è dovuto principalmente alla grandezza del dataset che limita teoricamente il numero di preditorri utilizzabili.
 Per questo motivo possiamo prendere meno in considerazione i valori dei coefficienti di regressione.
 
-In your particular application, you are under-powered to test this many coefficients. 
-The usual rule of thumb in Cox or logistic regressions is to have about 15 events per predictor variable being considered. 
-(For this, interaction terms count as predictor variables.) Your 53 events thus would limit you to about 3 predictors,while your model includes 6. Note that your overall model does not reach standard statistical significance 
-(p-value is > 0.05 for the omnibus tests), so you should not be paying much attention to the individual regression coefficients anyway. 
-This model is not significantly different, by standard frequentist criteria, from no model at all.
+Plottiamo il fit del modello tramite la funzione ggsurvplot:
 
 ```{r}
 ggsurvplot(
@@ -133,8 +128,9 @@ ggsurvplot(
 )
 ```
 
+## Modello baseline
+Costruiamo il modello baseline:
 ```{r}
-# Modello basale
 bas <- basehaz(model, centered = FALSE)
 bas.surv <- exp(-bas[, 1])
 plot(
@@ -149,71 +145,31 @@ plot(
   ylab = 'survival probability'
 )
 ```
+Qua ci va scritto qualcosa penso.
+\newpage
 
+## Valutazione dell'azzardo proporzionale
+Verifichiamo tramite l'utilizzo dei residui di Schoenfeld se le covariate del modello rispettano l'assunzione di azzardo proporzionale:
 ```{r}
 # Residui di Schoenfeld
-test.ph = cox.zph(model)
-ggcoxzph(test.ph)
-```
 
-```{r}
-# Verifica dei residui con il metodo di Lin
-library(goftte)
+test.ph = cox.zph(model)
+ggcoxzph(test.ph, font.main = 11, font.y = 9, font.x = 11, font.tickslab = 8)
+```
+Vediamo che i residui ottenuti hanno un andamento vicino a quello di una linea perfettamente orizzontale e sono quasi centrati sullo zero, quindi possiamo dire che l'assunzione di azzardo proporzionale non viene violata.
+Come ulteriore indagine testiamo l'assunzione con il metodo proposto da Lin [-@lin].
+```{r warning=FALSE}
+library("goftte")
 prop(model)
 ```
 
+Vediamo che solamente per uno dei tre test proposti sulla variabile Age abbiamo un p-value < 0.05, possiamo quindi assumere tranquillamente l'ipotesi di azzardo proporzionale ed evitare di adottare strategie per risolvere questo problema rendendo il modello decisamente più complesso.
+
+## Valutazione della forma funzionale delle variabili continue
+
+Testiamo la forma funzionale della variabile Age utilizzando i residui di Martingale:
 ```{r}
-# Forma funzionale di age 
-# Knots è un parametro che va sistemato, forse non va bene
-par(mfrow = c(1, 2), mar = c(4, 4, 2, 2))
-mar.res <- resid(model, type = 'martingale')
-plot(dataset$Age,
-     mar.res,
-     xlab = "Time",
-     ylab = "Martingale Residuals",
-     main = "Check functional form of age")
-lines(lowess(dataset$Age, mar.res), col = 'red')
-
-library(splines)
-ms <- coxph(Surv(time, event > 0) ~ ns(Age, knots = c(20, 35, 45)), data = dataset)
-pred <- predict(ms, type = "terms", se = TRUE)
-hfit <- pred$fit[, 1]
-hse <- pred$se[, 1]
-hmat <- cbind(hfit, hfit + 1.96 * hse, hfit - 1.96 * hse)
-o <- order(dataset$Age)
-matplot(
-  dataset$Age[o],
-  hmat[o,],
-  pch = "*",
-  col = c("red", "orangered", "orangered"),
-  lwd = c(2, 1, 1),
-  xlab = "Age",
-  ylab = "log hazard ratio",
-  main = "Check functional form of Age",
-  type = "l"
-)
-
-ms <- coxph(Surv(time, event > 0) ~ Age, data = dataset)
-pred <- predict(ms, type = "terms", se = TRUE)
-hfit <- pred$fit[, 1]
-hse <- pred$se[, 1]
-hmat <- cbind(hfit, hfit + 1.96 * hse, hfit - 1.96 * hse)
-o <- order(dataset$Age)
-matplot(
-  dataset$Age[o],
-  hmat[o,],
-  pch = "*",
-  col = c("blue", "cornflowerblue", "cornflowerblue"),
-  lwd = c(2, 1, 1),
-  type = "l",
-  add = T
-)
-
-legend(
-  "topright",
-  c("natural spline", "linear"),
-  col = c(2, 4),
-  lwd = 2,
-  bty = "n"
-)
+m.age <- coxph(Surv(time, event) ~ Age, data = dataset)
+ggcoxfunctional(m.age, data = dataset)
 ```
+Dal grafico vediamo che l'andamento dei residui nel range $ [35, 50] $ è quasi linearmente decrescente, possiamo accettare il risultato visto che il 90% delle pazienti del dataset ha un'età che è contenuta in questo range.

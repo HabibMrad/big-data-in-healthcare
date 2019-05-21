@@ -12,6 +12,8 @@ pkgTest("pander")
 pkgTest("psych")
 pkgTest("survival")
 pkgTest("survminer")
+pkgTest("pROC")
+pkgTest("pec")
 
 fn <- "_main.Rmd"
 if (file.exists(fn))
@@ -19,3 +21,4 @@ if (file.exists(fn))
 
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 bookdown::render_book("index.Rmd")
+
