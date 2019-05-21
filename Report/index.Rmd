@@ -1,6 +1,9 @@
 ---
 title: "Breast Cancer Report"
-author: "Emanuele Carnati, De Cicco Alessandro, Lorenzo Mammana"
+author:
+- "Alessandro De Cicco MATRICOLA"
+- "Emanuele Carnati MATRICOLA"
+- "Lorenzo Mammana MATRICOLA"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
 documentclass: book
@@ -8,4 +11,10 @@ bibliography: [book.bib]
 biblio-style: apalike
 link-citations: yes
 description: "Final project"
+output: 
+  bookdown::pdf_book:
+    includes:
+      in_header: preamble.tex
+    keep_tex: yes
+subparagraph: yes
 ---

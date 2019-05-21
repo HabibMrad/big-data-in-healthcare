@@ -3,9 +3,6 @@
 
 ```{r include=FALSE}
 # carico le librerie necessarie
-options(warn=-1)
-library("survival")
-library("survminer")
 library("pander")
 
 # carico il dataset
@@ -21,9 +18,6 @@ dataset <-
 # Rimuovo l'id della riga
 dataset <- dataset[,-1]
 
-# Prendo solo le covariate cliniche
-dataset <- dataset[1:7]
-
 # Converto le variabili categoriche in categorie numeriche
 dataset$Diam <- ifelse(dataset$Diam == "<=2cm", 0, 1)
 dataset$N <- ifelse(dataset$N == "<4", 0, 1)
@@ -33,6 +27,11 @@ dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
                         ifelse(dataset$Grade == "Intermediate", 1, 2))
 ```
 
+Calcoliamo la correlazione tra tutte le variabili e l'outcome dello studio, ovvero la variabile event.
+
 ```{r}
-pander(cor(dataset), big.mark = ",") #-- matrice di correlazione
+cor_mat <- cor(dataset, dataset$event)
+# pander(cor_mat[sort.list(abs(cor_mat), decreasing = TRUE), 1], big.mark = ",")
+pander(cor_mat)
 ```
+Dalla matrice risultante vediamo che solamente il tempo ha un valore di correlazione assoluto superiore a 0.5, mentre le altre variabili non sembrano particolarmente correlate con l'outcome dello studio.

@@ -2,28 +2,62 @@
 
 ## Sviluppo del modello di rischio con covariate cliniche al basale
 
-```{r warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 library("survival")
 library("survminer")
 ```
+```{r include=FALSE}
+dataset <-
+  read.table(
+    "../dataset.csv",
+    na.strings = ".",
+    sep = "\t",
+    header = T,
+    row.names = NULL
+  )
 
+# Rimuovo l'id della riga
+dataset <- dataset[,-1]
+
+# Prendo solo le covariate cliniche
+dataset <- dataset[1:7]
+
+# Converto le variabili categoriche in categorie numeriche
+dataset$Diam <- ifelse(dataset$Diam == "<=2cm", 0, 1)
+dataset$N <- ifelse(dataset$N == "<4", 0, 1)
+dataset$ER <- ifelse(dataset$ER == "Negative", 0, 1)
+dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
+                        0,
+                        ifelse(dataset$Grade == "Intermediate", 1, 2))
+```
+### Test non parametrici
+Iniziamo testando la funzione di sopravvivenza tramite Kaplan-Meier, utilizzando come approssimatore della varianza la formula di Greenwood.
 ```{r}
 # Kaplan-Meier
 fit <- survfit(Surv(dataset$time, dataset$event) ~ 1)
 par(mar = c(4, 4, 2, 2))
-plot(fit, xlab = 'time (months)', ylab = 'survival probability')
-title('Kaplan Meier estimate (pooled data)')
+plot(fit, xlab = 'Tempo (mesi)', ylab = 'Probabilità di sopravvivenza')
+title('Kaplan-Meier')
 
 ```
+Come ci si aspetta, più passa il tempo, più la probabilità di sopravvivere dei pazienti si abbassa.
+
+Stimiamo inoltre la funzione di azzardo cumulato usando:
+\begin{itemize}
+\item Lo stimatore di Aalen-Nelson
+\item La relazione tra survival e azzardo $ S(t) = e^{-cumhaz(t)} $
+\item L'azzardo baseline estratto dal fit di un modello nullo
+\end{itemize}
+
 
 ```{r}
-# Aalen-Nelson hazard cumulato
+# Aalen-Nelson
 na.haz <- cumsum(fit$n.event / fit$n.risk)
 plot(fit$time,
      na.haz,
      type = 's',
-     xlab = 'time ',
-     ylab = 'cumulative hazard')
+     xlab = 'tempo (mesi) ',
+     ylab = 'azzardo cumulato')
 ```
 
 ```{r}
@@ -34,31 +68,31 @@ plot(
   cumhaz,
   type = 's',
   ylim = c(0, 1) ,
-  xlab = 'time',
-  ylab = 'cumulative hazard'
+  xlab = 'tempo (mesi)',
+  ylab = 'azzardo cumulato'
 )
 ```
 
 ```{r}
-# Basal hazard
+# Baseline hazard
 b.haz <- basehaz(coxph(Surv(dataset$time, dataset$event) ~ 1, method = "exact"))
 plot(
   b.haz$time,
   b.haz$hazard,
   type = 's',
-  xlab = 'time',
-  ylab = 'cumulative hazard'
+  xlab = 'tempo (mesi)',
+  ylab = 'azzardo cumulato'
 )
 ```
-
+Mostriamo in un unico grafico le differenze tra i tre metodi.
 ```{r}
 # Contrast the findings
 plot(
   fit$time,
   na.haz,
   type = 's',
-  xlab = 'time (months)',
-  ylab = 'cumulative hazard',
+  xlab = 'tempo (mesi)',
+  ylab = 'azzardo cumulato',
   ylim = c(0, 1)
 )
 points(fit$time, na.haz)
@@ -66,37 +100,29 @@ lines(fit$time, cumhaz, type = 's', col = 2)
 points(fit$time, cumhaz, pch = 20, col = 2)
 lines(b.haz$time, b.haz$hazard, type = 's', col = 3)
 points(b.haz$time, b.haz$hazard, pch = 5, col = 3)
-legend("bottomright", legend = c("Nelson-Aalen estimate", "-log(S(t))", "Baseline hazard from Cox"),
+legend("bottomright", legend = c("Nelson-Aalen estimateì", "-log(S(t))", "Baseline hazard from Cox"),
        col=c(1, 2, 3), lty=1, pch=c(1, 20, 5))
 ```
-#### Modello di Cox al basale
+Notiamo che i test proposti non differiscono quasi di nulla (Perchè ?).
+
+### Modello di Cox al basale
+Costruiamo il modello di Cox utilizzando le covariate cliniche.
 ```{r}
 model <- coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age,
                data = dataset)
 summary(model)
 ```
 
-Cosa vediamo dal summary
-
-- Il valore exp(coef) è quello più importante
-
-- Vediamo che ad esempio Diam = 1 aumenta l'azzardo di un fattore pari a 1.497 
-
-- Grade = 2 riduce l'azzardo di un fattore pari a 0.45, questo va bene perchè grade = 2 è benigno
-
-- Strano che l'eta faccia 0.95, mi aspetto che l'eta riduca la survival 
-
-- Non ho tante stelline quindi i test non sono molto significativi?
-
-- Visto che Age ha quasi uno nell'upper .95 dovrebbe significare che non influisce quasi per nulla sulla predizione
+Dal summary del modello vediamo che Diam e N contribuiscono ad aumentare l'azzardo, mentre ER e Grade = 2 contribuiscono a diminuirlo.
+Age e Grade = 1 hanno un coefficiente vicino allo zero e quindi danno un contributo quasi nullo all'azzardo.
+Notiamo inoltre che i test statistici hanno una significatività molto bassa (solo un p-value < 0.05), questo è dovuto principalmente alla grandezza del dataset che limita teoricamente il numero di preditorri utilizzabili.
+Per questo motivo possiamo prendere meno in considerazione i valori dei coefficienti di regressione.
 
 In your particular application, you are under-powered to test this many coefficients. 
 The usual rule of thumb in Cox or logistic regressions is to have about 15 events per predictor variable being considered. 
 (For this, interaction terms count as predictor variables.) Your 53 events thus would limit you to about 3 predictors,while your model includes 6. Note that your overall model does not reach standard statistical significance 
 (p-value is > 0.05 for the omnibus tests), so you should not be paying much attention to the individual regression coefficients anyway. 
 This model is not significantly different, by standard frequentist criteria, from no model at all.
-
-Dobbiamo usare meno predittori?
 
 ```{r}
 ggsurvplot(

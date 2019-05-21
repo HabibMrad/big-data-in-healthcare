@@ -6,11 +6,11 @@ Il package pander viene utilizzato per renderizzare in maniera elegante i metodi
 ```{r warning=FALSE}
 # carico le librerie necessarie
 library("pander")
+library("psych")
 ```
 
 Carichiamo il dataset.
 ```{r}
-# carico il dataset
 dataset <-
   read.table(
     "../dataset.csv",
@@ -21,7 +21,7 @@ dataset <-
   )
 ```
 
-Inizialmente calcoliamo le statistiche relative solamente alle covariate cliniche.
+Mostriamo le statistiche relative alle covariate cliniche, per le analisi su tutte le variabili ci riportiamo all' [Inserire link all'appendice]
 ```{r}
 # Rimuovo l'id della riga
 dataset <- dataset[,-1]
@@ -41,7 +41,7 @@ dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
 ### Computazione statistiche
 
 ```{r}
-pander(summary(dataset), big.mark = ",") #-- statistiche 
+pander(describe(dataset), big.mark = ",") #-- statistiche 
 ```
 Dalle statistiche vediamo che il tempo massimo di follow-up è di quasi 18 mesi e abbiamo più censure che eventi (media < 0.5).
 \newpage
