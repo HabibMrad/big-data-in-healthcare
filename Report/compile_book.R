@@ -14,6 +14,8 @@ pkgTest("survival")
 pkgTest("survminer")
 pkgTest("pROC")
 pkgTest("pec")
+pkgTest("corrplot")
+pkgTest("glmnet")
 
 fn <- "_main.Rmd"
 if (file.exists(fn))

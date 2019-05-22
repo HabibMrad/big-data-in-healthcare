@@ -1,9 +1,8 @@
-# Capitolo 6
-## Regressione penalizzata su set di variabili di espressione genica
+# Regressione penalizzata su set di variabili di espressione genica
 
-```{r include=FALSE}
+Carichiamo il dataset prendendo solo le covariate di espressione genica, il tempo e l'outcome:
+```{r message=FALSE, warning=FALSE}
 library("survival")
-library("corrplot")
 library("glmnet")
 
 # carico il dataset
@@ -18,12 +17,11 @@ dataset <- read.table(
 # Rimuovo l'id della riga
 dataset <- dataset[,-1]
 
-# Prendo solo le covariate di espressione genica, il tempo e l'outcome
 dataset <- dataset[c(1, 2, 8:length(dataset))]
-head(dataset)
 ```
 
-#### Kaplan-Meier
+## Kaplan-Meier
+Stimiamo la probabilità di evento nel tempo utilizzando lo stimatore Kaplan-Meier:
 ```{r}
 fit <- survfit(Surv(time, event) ~ 1, data = dataset)
 
@@ -31,13 +29,17 @@ par(mar = c(4, 4, 2, 2))
 plot(
   fit,
   fun = "F",
-  xlab = 'Time since treatment start (months)',
-  ylab = 'Probability of event',
+  xlab = 'Tempo di followup libero da metastasi',
+  ylab = 'Probabilità di evento',
   ylim = c(0, 1)
 )
 ```
-#### Explore the correlation between the proteomic (forse non sono proteomic) features.
-```{r,  fig.width = 7, fig.height = 7}
+
+## Valutiamo la correlazione tra le covariate geniche
+
+```{r,  fig.width = 8, fig.height = 7, warning=FALSE}
+library("corrplot")
+
 corrs <- cor(dataset[, 3:72])
 a <- apply(corrs, 1, function(x) abs(x) > 0.75 & abs(x) < 1)
 # variables with a correlation >0.75 with at least another variable
@@ -45,8 +47,12 @@ b <- rowSums(a) > 0
 vars <- names(b[b == T])
 corrplot(cor(dataset[, vars]), method = "number")
 ```
-#### Evaluate the association between each proteomic (forse) feature and the outcome using univariate Cox models.
+Notiamo subito che abbiamo diverse covariate molto correlate fra di loro.
+
+## Valutazione della correlazione tra le covariate geniche e l'outcome
+Utilizziamo un modello di Cox univariato per ogni covariata per valutarne l'associazione con l'outcome:
 ```{r}
+library("pander")
 vars <- names(dataset[, 3:72])
 output <- lapply(vars, function(var) {
   formula    <- as.formula(paste("Surv(time, event) ~ ", var))
@@ -59,26 +65,37 @@ output <- lapply(vars, function(var) {
 results <- as.data.frame(matrix(unlist(output), ncol = 4, byrow = T))
 names(results) <- c("HR", "lower95%CI", "upper95%CI", "p")
 results$features <- vars
-results
+pander(results[results[order(results$p), ]$p <= 0.05, ])
 ```
-
-#### According to the results of the univariate analysis, find which features have a significant association with the outcome at 5% level. Check again which features would be selected after the application of a method to adjust for multiple comparisons by controlling the Family-Wise Error Rate (FWER, e.g. Holm procedure) or the False Discovery Rate (FDR, e.g. Benjamini-Hochberg procedure).
-```{r}
-results[results$p < 0.05,]
-```
-
+In tabella vengono mostrate tutte quelle covariate il cui test è particolarmente significativo (p-value < 0.05).
+Per la tabella completa si rimanda all'apposita sezione nell'appendice.
+### Valutazione degli errori
+Verifichiamo quali covariate presentano una associazione significativa al 5% dopo l'applicazione di metodi per valutare l'errore dovuto a comparazioni multiple.
+Valutiamo inizialmente il Family-Wise Error Rate (FWER) utilizzando la procedura di Holm
 ```{r}
 results$q.holm <- p.adjust(results$p, method = "holm")
-results$q.BH <- p.adjust(results$p, method = "BH")
-
 results[results$q.holm < 0.05, ]
 ```
 
+Valutiamo poi il False Discovery Rate (FDR) utilizzando la procedura di Benjamini-Hochberg:
+
 ```{r}
+results$q.BH <- p.adjust(results$p, method = "BH")
 results[results$q.BH < 0.05, ]
 ```
 
-#### Fit a multiple Cox model with Ridge penalty. Plot the estimated coefficients at each value of the shrinkage parameter lambda.
+## Regressione penalizzata
+
+Un modello di Cox standard ha come obiettivo la massimizzazioni della partial Log-likelihood:
+$$ LPL(\beta|X) = \sum_{j = 1}^{J}\beta'*x_{(j)} - log \Big[\sum_{i \in R(t_{(j)})}e^{\beta'*x_i} \Big]$$
+La regressione penalizzata consiste nell'aggiungere un termine di penalizzazione che riduce i coefficienti della regressione fino a zero permettendo quindi di rimuovere la maggior parte delle variabili che non influiscono sull'accuratezza del modello.
+$$ LPL(\beta|X, \lambda) =  LPL(\beta|X) - p_\lambda(\beta)$$
+
+### Penalizzazione ridge
+
+Nella penalizzazione ridge abbiamo
+$$ p_\lambda(\beta) = \lambda\sum_{j = 1}^{p}|\beta_j|  $$
+
 ```{r}
 X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
 
