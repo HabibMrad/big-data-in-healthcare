@@ -53,7 +53,43 @@ estmodel <- survfit(Surv(riskdeath, event.12m) ~ 1, data = dataset)
 ```
 
 Valutiamo la calibrazione del modello tramite predictiveness curve.
-```{r}
+```{r fig.show = 'hide'}
+# Predictiveness curve del modello
+plot((1 - estmodel$surv) * 100,
+     estmodel$time,
+     main = '',
+     type = 'l',
+     ylim = c(0, 1),
+     lwd = 3,
+     ylab = 'r',
+     cex.lab = 1.7,
+     cex.axis = 1.7,
+     xlab = expression(paste('P(riskscore', '' <= 'r)*100')),
+     xaxt = "n",
+     yaxt = "n",
+     frame = F
+)
+```
+
+Plottiamo anche la prevalenza $p$ e la curva del predittore di rischio ideale.
+```{r eval=FALSE}
+# Predictiveness curve of a useless model:
+p <- sum(dataset$event.12m) / dim(dataset)[1]
+
+lines(c(0, 100),
+      c(p, p),
+      lty = 2,
+      lwd = 3,
+      col = 'gray')
+
+text(40, 0.1, labels = bquote(rho ==  .(round(p, 3) * 100) ~ '%'), cex = 1.7) 
+
+# Predictiveness curve of the ideal risk predictor:
+lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
+lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
+lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
+```
+```{r echo=FALSE}
 # Predictiveness curve del modello
 plot((1 - estmodel$surv) * 100,
      estmodel$time,
@@ -111,6 +147,7 @@ lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
 ```
 Discussione dei risultati bla bla bla
 
+\newpage
 ### Brier score
 Valutiamo il Brier score:
 ```{r}
@@ -126,9 +163,28 @@ Il valore del Brier score è più vicino allo zero che all'uno e ciò indica che
 
 ## Discriminazione
 
-```{r}
+Valutiamo l'accuratezza della predizione del rischio e Scegliamo poi la soglia migliore da utilizzare usando l'indice di Youden:
+```{r fig.show='hide', results='hide'}
 roc_model <- roc(dataset$event.12m, dataset$riskdeath)
 
+Youden <- roc_model$sensitivities + roc_model$specificities - 1
+optimal.cut.off <- roc_model$thresholds[Youden == max(Youden)]
+
+plot(
+  1 - roc_model$specificities,
+  roc_model$sensitivities,
+  type = 'l',
+  ylab = 'TPF',
+  xlab = 'FPF',
+  lwd = 3,
+  xaxt = "n",
+  yaxt = "n",
+  xlim = c(0, 1),
+  cex.lab = 1.7,
+  frame = F
+)
+```
+```{r echo=FALSE}
 plot(
   1 - roc_model$specificities,
   roc_model$sensitivities,
@@ -166,9 +222,6 @@ axis(
 
 lines(x = c(0, 1), y = c(0, 1))
 
-Youden <- roc_model$sensitivities + roc_model$specificities - 1
-optimal.cut.off <- roc_model$thresholds[Youden == max(Youden)]
-
 cbind(optimal.cut.off, Youden = max(Youden))
 
 points(
@@ -177,59 +230,19 @@ points(
   pch = 0,
   cex = 1.7
 )
-
-AUC <- roc_model$auc
-
 ```
 
 ```{r}
-# Brier score (adjusted for censoring) and the c-index. --------------------------------
+AUC <- roc_model$auc
+print(AUC)
+```
+Con un AUC di poco superiore a 0.7 il modello è al limite dell'accettabilità, sapevamo che avendo così pochi dati le performance utilizzando soltanto le covariate cliniche sarebbero state relativamente basse.
+Il valore che massimizza la differenza tra veri e falsi positivi è derivato dall Youden ed è pari a $0,3581$.
 
-# Non so se vada
-model <-
-  coxph(
-    formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age,
-    data = dataset,
-    x = T
-  )
-
-summary(model)
-
-fit <- survfit(model, newdata = dataset)
-dataset$riskdeath <- 1 - as.numeric(summary(fit, times = 12)$surv)
-
-set.seed(10052019)
-PredError = pec(
-  model,
-  maxtime = 17.65913758,
-  formula = Surv(time, event == 1) ~ 1,
-  data = dataset,
-  cens.model = "marginal",
-  splitMethod = "bootcv",
-  B = 10,
-  verbose = TRUE
-)
-
-print(PredError, times = seq(0, 17.65913758, 1))
-
-par(mfrow = c(1, 1))
-plot(PredError)
-
-set.seed(1103)
-BootCindex <- cindex(
-  model,
-  formula = Surv(time, event == 1) ~ 1,
-  data = dataset,
-  eval.times = seq(1, 17.71, 1),
-  cens.model = "marginal",
-  splitMethod = "bootcv",
-  B = 10,
-  verbose = TRUE
-)
-
-print(BootCindex)
-plot(BootCindex)
-
+\newpage
+## Net benefit
+Calcoliamo infine il beneficio che otteniamo trattando pazienti malati rispetto alla perdita che abbiamo trattando pazienti sani:
+```{r results='hide'}
 netbenefit <-
   stdca(
     data = dataset,
@@ -238,10 +251,32 @@ netbenefit <-
     timepoint = 12,
     predictors = c("riskdeath")
   )
+```
+Qua ci va scritto un commento, ma non so cosa dite.
 
+\newpage
+Plottiamo il net benefit per il modello con i costi sull'asse superiore:
+```{r, fig.show='hide'}
 par(mar = c(5, 4.5, 4, 1))
 
-# Net Benefit for the model:
+plot(
+  netbenefit$net.benefit$threshold,
+  netbenefit$net.benefit$riskdeath,
+  type = "l",
+  lwd = 3,
+  xlim = c(0, 1),
+  ylim = c(0, 0.20),
+  xlab = "r",
+  ylab = "NB(r)",
+  xaxt = "n",
+  yaxt = "n",
+  cex.lab = 1.7,
+  cex.axis = 1.6,
+  frame = F
+)
+```
+
+```{r echo=FALSE}
 plot(
   netbenefit$net.benefit$threshold,
   netbenefit$net.benefit$riskdeath,
