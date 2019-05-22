@@ -87,19 +87,20 @@ results[results$q.BH < 0.05, ]
 ## Regressione penalizzata
 
 Un modello di Cox standard ha come obiettivo la massimizzazioni della partial Log-likelihood:
-$$ LPL(\beta|X) = \sum_{j = 1}^{J}\beta'*x_{(j)} - log \Big[\sum_{i \in R(t_{(j)})}e^{\beta'*x_i} \Big]$$
-La regressione penalizzata consiste nell'aggiungere un termine di penalizzazione che riduce i coefficienti della regressione fino a zero permettendo quindi di rimuovere la maggior parte delle variabili che non influiscono sull'accuratezza del modello.
-$$ LPL(\beta|X, \lambda) =  LPL(\beta|X) - p_\lambda(\beta)$$
+$$ LPL(\beta|X) = \sum_{j = 1}^{J}\beta'*x_{(j)} - log \Big[\sum_{i \in R(t_{(j)})}e^{\beta'*x_i} \Big] $$
+
+La regressione penalizzata aggiunge un termine di penalizzazione che riduce i coefficienti fino a zero permettendo quindi di rimuovere la maggior parte delle variabili che non influiscono sull'outcome del modello.
+$$ LPL(\beta|X, \lambda) =  LPL(\beta|X) - p_\lambda(\beta) $$
 
 ### Penalizzazione ridge
 
-Nella penalizzazione ridge abbiamo
-$$ p_\lambda(\beta) = \lambda\sum_{j = 1}^{p}|\beta_j|  $$
+Nella penalizzazione ridge il termine di penalizzazione è definito come:
+$$ p_\lambda(\beta) = \lambda\sum_{j = 1}^{p}\beta_j^2  $$
 
 ```{r}
-X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
+X <- model.matrix(~ ., subset(dataset, select = -c(time, event)))
 
-rigde.pen <-
+ridge.pen <-
   glmnet(
     x = X[,-1],
     y = Surv(dataset$time, dataset$event),
@@ -108,7 +109,7 @@ rigde.pen <-
     nlambda = 100
   )
 
-lambdas <- rigde.pen$lambda
+lambdas <- ridge.pen$lambda
 
 par(mar = c(4, 4, 5, 2))
 plot(
@@ -116,7 +117,7 @@ plot(
   lambdas,
   type = "n",
   xlab = bquote(beta),
-  xlim = range(rigde.pen$beta),
+  xlim = range(ridge.pen$beta),
   ylab = bquote(lambda),
   ylim = rev(range(lambdas)),
   yaxs = "i",
@@ -124,22 +125,27 @@ plot(
 )
 abline(v = 0, lwd = 4)
 
-for (i in 1:nrow(rigde.pen$beta))
-  lines(rigde.pen$beta[i,], lambdas, col = i, lwd = 2)
+for (i in 1:nrow(ridge.pen$beta))
+  lines(ridge.pen$beta[i,], lambdas, col = i, lwd = 2)
 
 mtext(
-  rownames(rigde.pen$beta),
+  rownames(ridge.pen$beta),
   3,
-  at = rigde.pen$beta[, 100],
+  at = ridge.pen$beta[, 100],
   line = .2,
-  col = 1:nrow(rigde.pen$beta),
+  col = 1:nrow(ridge.pen$beta),
   font = 2,
   las = 3,
   adj = 0,
   cex = .75
 )
 ```
-#### Fit a multiple Cox model with Lasso penalty. Plot the estimated coefficients at each value of the shrinkage parameter lambda.
+La particolarità della penalizzazione ridge è quella di far avvicinare tutti i coefficienti a zero senza però annullarli. \'E un metodo che infatti non viene quasi mai utilizzato per eseguire feature selection.
+Dall'immagine vediamo ovviamente che più aumenta $\lambda$, più tutti i coefficienti vanno verso lo zero. 
+
+### Penalizzazione Lasso
+Nella penalizzazione Lasso il termine di penalizzazione è definito come:
+$$ p_\lambda(\beta) = \lambda\sum_{j = 1}^{p}|\beta_j|  $$
 ```{r}
 X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
 
@@ -183,14 +189,17 @@ mtext(
   cex = .75
 )
 ```
-#### Fit a multiple Cox model with Lasso penalty using cross validation to find the optimal value of the shrinkage parameter. Find which features would be selected using the optimal lambda.
-```{r}
+Anche in questo caso vediamo che più il valore di $\lambda$ aumenta più le variabili vengono ristrette fino però ad azzerarsi completamente.
+
+## Lambda ottimale per la penalizzazione Lasso
+Utilizziamo la 10 fold cross validation per addestrare il modello:
+```{r warning=FALSE}
 X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
 set.seed(16052019)
 
 cv.lasso <-
   cv.glmnet(
-    x = X[,-1],
+    x = X[, -1],
     y = Surv(dataset$time, dataset$event),
     family = 'cox',
     nfold = 10,
@@ -210,8 +219,11 @@ points(cv.lasso$lambda[which.min(cv.lasso$cvm)],
        min(cv.lasso$cvm),
        pch = 16,
        col = 2)
-```
 
+print(cv.lasso$lambda[which.min(cv.lasso$cvm)])
+```
+Il valore di $\lambda = 0.02444646$ ottimale è quello che minimizza il mean cross-validated error.
+Mostriamo quindi quali variabili sarebbero selezionate dalla penalizzazione Lasso utilizzando questo valore di $\lambda$.
 ```{r}
 opt.lambda <- cv.lasso$lambda[which.min(cv.lasso$cvm)]
 opt.lambda.coef <- as.numeric(coef(cv.lasso, s = opt.lambda))
@@ -223,8 +235,8 @@ lasso.HR <- round(exp(opt.lambda.coef), 3)
 rownames(coef(cv.lasso))[opt.lambda.coef != 0]
 ```
 
-#### Fit a multiple Cox model with Elastic Net penalty (set alpha=0.5) using cross validation to find the optimal value of the shrinkage parameter. Find which features would be selected using the optimal lambda.
-
+## Penalizzazione Elastic Net
+Fit a multiple Cox model with Elastic Net penalty (set alpha=0.5) using cross validation to find the optimal value of the shrinkage parameter. Find which features would be selected using the optimal lambda.
 ```{r}
 X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
 set.seed(16052019)
