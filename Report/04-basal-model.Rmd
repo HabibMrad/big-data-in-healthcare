@@ -119,16 +119,8 @@ Per questo motivo possiamo prendere meno in considerazione i valori dei coeffici
 
 Plottiamo il fit del modello tramite la funzione ggsurvplot:
 
-```{r}
-ggsurvplot(
-  survfit(model),
-  data = dataset,
-  palette = "#2E9FDF",
-  ggtheme = theme_minimal()
-)
-```
-
 ## Modello baseline
+
 Costruiamo il modello baseline:
 ```{r}
 bas <- basehaz(model, centered = FALSE)
@@ -138,12 +130,16 @@ plot(
   bas.surv,
   type = 's',
   col = 1,
-  ylim = c(0, 1),
+  ylim = c(0, 1) ,
   xlim = c(0, 18),
   lty = 2,
-  xlab = 'time',
-  ylab = 'survival probability'
+  xlab = 'tempo (mesi)',
+  ylab = 'probabilità di sopravvivenza'
 )
+
+fit <- survfit(model)
+lines(x = fit$time, y = fit$surv, type='s', lwd=2, col=2, lty = 1)
+legend("topright", c("baseline", "model"), col = 1:2, lty=c(2, 1))
 ```
 Qua ci va scritto qualcosa penso.
 \newpage

@@ -222,7 +222,7 @@ points(cv.lasso$lambda[which.min(cv.lasso$cvm)],
 
 print(cv.lasso$lambda[which.min(cv.lasso$cvm)])
 ```
-Il valore di $\lambda = 0.02444646$ ottimale è quello che minimizza il mean cross-validated error.
+Il valore di $\lambda = 0.02444646$ ottimale è quello che minimizza la partial likelihood deviance.
 Mostriamo quindi quali variabili sarebbero selezionate dalla penalizzazione Lasso utilizzando questo valore di $\lambda$.
 ```{r}
 opt.lambda <- cv.lasso$lambda[which.min(cv.lasso$cvm)]
@@ -236,7 +236,9 @@ rownames(coef(cv.lasso))[opt.lambda.coef != 0]
 ```
 
 ## Penalizzazione Elastic Net
-Fit a multiple Cox model with Elastic Net penalty (set alpha=0.5) using cross validation to find the optimal value of the shrinkage parameter. Find which features would be selected using the optimal lambda.
+La penalizzazione elastic net combina le penalità di ridge e lasso:
+$$ p_\lambda(\beta) = \lambda_1 \sum_{j = 1}^{p}|\beta_j| + \lambda_2 \sum_{j = 1}^{p}\beta_j^2=\lambda \Big[\alpha\sum_{j = 1}^{p}|\beta_j| + \frac{1 - \alpha}{2} \sum_{j = 1}^{p}\beta_j^2\Big] $$
+In questo caso è necessario ottimizzare due parametri $\alpha$ e $\lambda$, lo facciamo settando il parametro $\alpha = 0.5$ per mediare l'influenza delle due penalizzazioni e ottimizzando $\lambda$ tramite 10 fold cross-validation.
 ```{r}
 X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
 set.seed(16052019)
@@ -270,10 +272,14 @@ rownames(coef(cv.el))[opt.lambda.coef != 0]
 # save coefficients (as HRs):
 el.HR <- round(exp(opt.lambda.coef), 3)
 ```
+Buona parte delle variabili sono identiche a quelle trovare tramite penalizzazione Lasso.
 
-#### Fit a multiple Cox model with Adaptive Lasso penalty (use the inverse of the absolute value of the coefficients from a model with a Lasso penalty as features-specific penalties) using cross validation to find the optimal value of the shrinkage parameter. Find which features would be selected using the optimal lambda.
+## Adaptive Lasso
 
-```{r}
+La penalizzazione Adaptive Lasso pesa i coefficienti in accordo alla loro importanza per, teoricamente, tenere solamente le variabili più informative:
+$$ p_\lambda(\beta) = \lambda \sum_{j = 1}^{p}w_j|\beta_j| $$
+Come per le precedenti penalizzazioni troviamo il miglior parametro $\lambda$ tramite 10 fold cross-validation, cominciamo fittando un modello di cox con lasso standard per estrarre i coefficienti migliori che verrano usati per calcolari i pesi $w_j$.
+```{r message=FALSE, warning=FALSE}
 X <- model.matrix( ~ ., subset(dataset, select = -c(time, event)))
 set.seed(16052019)
 
@@ -290,7 +296,7 @@ best.coef <-
   as.numeric(coef(cv.lasso1, s = cv.lasso1$lambda[which.min(cv.lasso1$cvm)]))
 round(best.coef, 3)
 ```
-
+Calcoliamo poi l'Adaptive Lasso:
 ```{r}
 set.seed(16052019)
 cv.adlasso <-
@@ -312,13 +318,20 @@ adlasso.HR <- round(exp(opt.lambda.coef), 3)
 # selected features:
 rownames(coef(cv.adlasso))[opt.lambda.coef!=0]
 ```
-#### Compare the selected features and the estimated association parameters (HRs) according to all penalized models and the univariate analysis
+Come ci si aspettava il numero di variabili scelte da questa penalizzazione è minore rispetto alle precedenti.
+
+## Comparazione dei modelli
+
 ```{r}
-cbind(
-  features = results$features,
-  univariate.HR = results$HR,
-  lasso.HR,
-  el.HR,
-  adlasso.HR
+pander(
+  cbind(
+    features = results$features,
+    univariate.HR = results$HR,
+    lasso.HR,
+    el.HR,
+    adlasso.HR
+  )
 )
 ```
+Vediamo come l'Adaptive Lasso produce degli hazard ratio che sono spesso molto superiori o molto inferiori rispetto a quelli generati dalle altre penalizzazione, indicando appunto che valuta molto meglio quanto effettivamente le covariate incidano sull'outcome.
+Scegliamo per questo motivo le variabili con hazard ratio diverso da uno per addestrare il modello descritto nel capitolo 7.
