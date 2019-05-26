@@ -37,6 +37,7 @@ model <- coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age
 ```
 
 ## Calibrazione
+
 ### Predictiveness curve
 
 Calcoliamo il rischio di morte al tempo t = 12 mesi.
@@ -53,42 +54,6 @@ estmodel <- survfit(Surv(riskdeath, event.12m) ~ 1, data = dataset)
 ```
 
 Valutiamo la calibrazione del modello tramite predictiveness curve.
-```{r fig.show = 'hide'}
-# Predictiveness curve del modello
-plot((1 - estmodel$surv) * 100,
-     estmodel$time,
-     main = '',
-     type = 'l',
-     ylim = c(0, 1),
-     lwd = 3,
-     ylab = 'r',
-     cex.lab = 1.7,
-     cex.axis = 1.7,
-     xlab = expression(paste('P(riskscore', '' <= 'r)*100')),
-     xaxt = "n",
-     yaxt = "n",
-     frame = F
-)
-```
-
-Plottiamo anche la prevalenza $p$ e la curva del predittore di rischio ideale.
-```{r eval=FALSE}
-# Predictiveness curve of a useless model:
-p <- sum(dataset$event.12m) / dim(dataset)[1]
-
-lines(c(0, 100),
-      c(p, p),
-      lty = 2,
-      lwd = 3,
-      col = 'gray')
-
-text(40, 0.1, labels = bquote(rho ==  .(round(p, 3) * 100) ~ '%'), cex = 1.7) 
-
-# Predictiveness curve of the ideal risk predictor:
-lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
-lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
-lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
-```
 ```{r echo=FALSE}
 # Predictiveness curve del modello
 plot((1 - estmodel$surv) * 100,
@@ -129,6 +94,7 @@ axis(
   pos = 0
 )
 
+#Plottiamo anche la prevalenza p e la curva del predittore di rischio ideale.
 # Predictiveness curve of a useless model:
 p <- sum(dataset$event.12m) / dim(dataset)[1]
 
@@ -145,10 +111,14 @@ lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
 lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
 lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
 ```
-Discussione dei risultati bla bla bla
+
+Sull'asse delle x abbiamo la funzione di ripartizione del rischio predetto.
+La predictivness curve rappresenta la funzione di ripartizione del rischio predetto. Rispetto al modello perfetto, che arriva fino al 68.1% (complementare della probabilità 31.9%), la nostra predictivness curve ci mostra come (dopo il 10% circa) il modello sovrastimi il rischio di morte del paziente.
 
 \newpage
+
 ### Brier score
+
 Valutiamo il Brier score:
 ```{r}
 brier_score <- mean((dataset$event.12m - dataset$riskdeath) ^ 2)
@@ -161,30 +131,17 @@ print(paste("Brier score under strong calibration: ", brier_score_sc))
 ```
 Il valore del Brier score è più vicino allo zero che all'uno e ciò indica che il modello è ben calibrato.
 
-## Discriminazione
 
+## Discriminazione
 Valutiamo l'accuratezza della predizione del rischio e Scegliamo poi la soglia migliore da utilizzare usando l'indice di Youden:
-```{r fig.show='hide', results='hide'}
+
+```{r echo=FALSE}
+
 roc_model <- roc(dataset$event.12m, dataset$riskdeath)
 
 Youden <- roc_model$sensitivities + roc_model$specificities - 1
 optimal.cut.off <- roc_model$thresholds[Youden == max(Youden)]
 
-plot(
-  1 - roc_model$specificities,
-  roc_model$sensitivities,
-  type = 'l',
-  ylab = 'TPF',
-  xlab = 'FPF',
-  lwd = 3,
-  xaxt = "n",
-  yaxt = "n",
-  xlim = c(0, 1),
-  cex.lab = 1.7,
-  frame = F
-)
-```
-```{r echo=FALSE}
 plot(
   1 - roc_model$specificities,
   roc_model$sensitivities,
@@ -236,12 +193,14 @@ points(
 AUC <- roc_model$auc
 print(AUC)
 ```
-Con un AUC di poco superiore a 0.7 il modello è al limite dell'accettabilità, sapevamo che avendo così pochi dati le performance utilizzando soltanto le covariate cliniche sarebbero state relativamente basse.
-Il valore che massimizza la differenza tra veri e falsi positivi è derivato dall Youden ed è pari a $0,3581$.
+Con un AUC di poco superiore a 0.7 il modello è al limite dell'accettabilità, sapevamo che avendo così pochi dati le performance (utilizzando soltanto le covariate cliniche) sarebbero state relativamente basse.
+Il valore che massimizza la differenza tra veri e falsi positivi è derivato dallo Youden ed è pari a $0,3581$.
 
 \newpage
 ## Net benefit
+
 Calcoliamo infine il beneficio che otteniamo trattando pazienti malati rispetto alla perdita che abbiamo trattando pazienti sani:
+
 ```{r results='hide'}
 netbenefit <-
   stdca(
@@ -252,31 +211,18 @@ netbenefit <-
     predictors = c("riskdeath")
   )
 ```
-Qua ci va scritto un commento, ma non so cosa dite.
+
+link... http://www.danieldsjoberg.com/dca/reference/stdca.html
+
+In base al grafico soprastante, notiamo come fino ad un valore di threshold probability dello 0.3 circa, il rischio di morte del paziente coincide con la curva dei benefici netti della popolazione. 
 
 \newpage
+
 Plottiamo il net benefit per il modello con i costi sull'asse superiore:
-```{r, fig.show='hide'}
+```{r echo=FALSE}
+
 par(mar = c(5, 4.5, 4, 1))
 
-plot(
-  netbenefit$net.benefit$threshold,
-  netbenefit$net.benefit$riskdeath,
-  type = "l",
-  lwd = 3,
-  xlim = c(0, 1),
-  ylim = c(0, 0.20),
-  xlab = "r",
-  ylab = "NB(r)",
-  xaxt = "n",
-  yaxt = "n",
-  cex.lab = 1.7,
-  cex.axis = 1.6,
-  frame = F
-)
-```
-
-```{r echo=FALSE}
 plot(
   netbenefit$net.benefit$threshold,
   netbenefit$net.benefit$riskdeath,

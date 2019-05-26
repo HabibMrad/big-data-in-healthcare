@@ -31,6 +31,7 @@ dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
 ```
 ## Test non parametrici
 Iniziamo testando la funzione di sopravvivenza tramite Kaplan-Meier, utilizzando come approssimatore della varianza la formula di Greenwood.
+
 ```{r}
 # Kaplan-Meier
 fit <- survfit(Surv(dataset$time, dataset$event) ~ 1)
@@ -39,6 +40,7 @@ plot(fit, xlab = 'Tempo (mesi)', ylab = 'Probabilità di sopravvivenza')
 title('Kaplan-Meier')
 
 ```
+
 Come ci si aspetta, più passa il tempo, più la probabilità di sopravvivere dei pazienti si abbassa.
 
 Stimiamo inoltre la funzione di azzardo cumulato usando:
@@ -83,6 +85,7 @@ plot(
   ylab = 'azzardo cumulato'
 )
 ```
+
 Mostriamo in un unico grafico le differenze tra i tre metodi.
 ```{r}
 # Contrast the findings
@@ -99,10 +102,10 @@ lines(fit$time, cumhaz, type = 's', col = 2)
 points(fit$time, cumhaz, pch = 20, col = 2)
 lines(b.haz$time, b.haz$hazard, type = 's', col = 3)
 points(b.haz$time, b.haz$hazard, pch = 5, col = 3)
-legend("bottomright", legend = c("Nelson-Aalen estimateì", "-log(S(t))", "Baseline hazard from Cox"),
+legend("bottomright", legend = c("Nelson-Aalen estimate", "-log(S(t))", "Baseline hazard from Cox"),
        col=c(1, 2, 3), lty=1, pch=c(1, 20, 5))
 ```
-Notiamo che i test proposti non differiscono quasi di nulla (Perchè ?).
+Notiamo come i tre grafici siano quasi perfettamente sovrapposti; questo ci da indicazioni circa la correttezza del calcolo della funzione "azzardo" con le tre metodologie precedentemente illustrate.
 
 ## Modello di Cox al basale
 Costruiamo il modello di Cox utilizzando le covariate cliniche.
@@ -112,8 +115,8 @@ model <- coxph(formula = Surv(time, event) ~ Diam + N + ER + factor(Grade) + Age
 summary(model)
 ```
 
-Dal summary del modello vediamo che Diam e N contribuiscono ad aumentare l'azzardo, mentre ER e Grade = 2 contribuiscono a diminuirlo.
-Age e Grade = 1 hanno un coefficiente vicino allo zero e quindi danno un contributo quasi nullo all'azzardo.
+Dal summary del modello vediamo che Diam e N contribuiscono ad aumentare l'azzardo, mentre ER e Grade = 2 contribuiscono a diminuirlo. Infatti "Grade = 2" rappresenta un'alta differenziazione del tessuto tumorale rispetto al tessuto sano; quindi è coerente che diminuisca il valore dell'azzardo (lo stesso vale per il recettore dell'estrogeno).
+Age e Grade = 1 (differenziazione intermedia) hanno un coefficiente vicino allo zero e quindi danno un contributo quasi nullo all'azzardo.
 Notiamo inoltre che i test statistici hanno una significatività molto bassa (solo un p-value < 0.05), questo è dovuto principalmente alla grandezza del dataset che limita teoricamente il numero di preditorri utilizzabili.
 Per questo motivo possiamo prendere meno in considerazione i valori dei coefficienti di regressione.
 
@@ -141,19 +144,22 @@ fit <- survfit(model)
 lines(x = fit$time, y = fit$surv, type='s', lwd=2, col=2, lty = 1)
 legend("topright", c("baseline", "model"), col = 1:2, lty=c(2, 1))
 ```
-Qua ci va scritto qualcosa penso.
+Dal grafico si nota come il nostro modello aumenti la probabilità di sopravvivenza (che si aggira attorno al 60% al valore più grande di follow up) rispetto alla curva di sopravvivenza di base (baseline).
+
 \newpage
 
 ## Valutazione dell'azzardo proporzionale
 Verifichiamo tramite l'utilizzo dei residui di Schoenfeld se le covariate del modello rispettano l'assunzione di azzardo proporzionale:
+
 ```{r}
 # Residui di Schoenfeld
-
 test.ph = cox.zph(model)
 ggcoxzph(test.ph, font.main = 11, font.y = 9, font.x = 11, font.tickslab = 8)
 ```
+
 Vediamo che i residui ottenuti hanno un andamento vicino a quello di una linea perfettamente orizzontale e sono quasi centrati sullo zero, quindi possiamo dire che l'assunzione di azzardo proporzionale non viene violata.
 Come ulteriore indagine testiamo l'assunzione con il metodo proposto da Lin [-@lin].
+
 ```{r warning=FALSE}
 library("goftte")
 prop(model)
