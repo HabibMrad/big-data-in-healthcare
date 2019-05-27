@@ -35,6 +35,9 @@ idx_genic <- idx_genic[adlasso.HR != 1]
 
 # Scelgo le feature geniche in base all'adaptive lasso
 dataset <- dataset[, c(1:7, idx_genic)]
+
+# Rimuovo SCUBE2
+dataset <- dataset[, -11]
 ```
 
 
@@ -43,16 +46,31 @@ dataset <- dataset[, c(1:7, idx_genic)]
 Escludere i pazienti con un potenziale follow-up < 1 anno. Ciò produrrà in modo imparziale un campione in cui tutti i pazienti vivi sono stati osservati per almeno 1 anno.
 
 ```{r}
-dataset.1y<-dataset[dataset$time>=12,]
-table(dataset.1y$time>=12, dataset.1y$event)
+dataset.1y <- dataset[dataset$time >= 12,]
+table(dataset.1y$time >= 12, dataset.1y$event)
 ```
 
 Abbiamo prodotto un subset di 17 pazienti, di cui 15 a fine trattamento non sono deceduti.
 
 ```{r}
 # creo il dataset dei 3 soggetti tipo, scelti casualmente dalla tabella
+set.seed(23052019)
 dataset.3 = dataset.1y[sample(nrow(dataset.1y), 3), ]
+
+print(dataset.3)
 ```
 
+## Predizione del rischio dei 3 soggetti tipo basata sul modello finale
 
-## Predizione del rischio dei 3 soggetti tipo basata sul nuovo modello
+```{r}
+model <- readRDS("../final_model.rds") 
+
+fit1 <- survfit(model, newdata = dataset.3[1, ])
+fit2 <- survfit(model, newdata = dataset.3[2, ])
+fit3 <- survfit(model, newdata = dataset.3[3, ])
+
+plot(NULL, xlab = "tempo (mesi)", ylab = "probabilità di sopravvivenza", xlim = c(0, 18), ylim = c(0, 1))
+lines(fit1$time, fit1$surv, col = 1)
+lines(fit2$time, fit2$surv, col = 2)
+lines(fit3$time, fit3$surv, col = 3)
+```

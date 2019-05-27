@@ -4,15 +4,17 @@
 
 ## Analisi dei residui di Schoenfeld
 ```{r}
-test.ph = cox.zph(model)
-ggcoxzph(test.ph[1:9], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
-ggcoxzph(test.ph[10:18], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
-ggcoxzph(test.ph[19:27], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
-ggcoxzph(test.ph[28:34], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+# library("survival")
+# library("survminer")
+# test.ph = cox.zph(model)
+# ggcoxzph(test.ph[1:9], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+# ggcoxzph(test.ph[10:18], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+# ggcoxzph(test.ph[19:27], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+# ggcoxzph(test.ph[28:34], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
 ```
 
 ```{r}
 # Verifica dei residui con il metodo di Lin
-library("goftte")
-prop(model, seed = 200519)
+# library("goftte")
+# prop(model, seed = 200519)
 ```

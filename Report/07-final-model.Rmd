@@ -150,6 +150,38 @@ estmodel <- survfit(Surv(riskdeath, event.12m) ~ 1, data = dataset)
 ### Predictiveness curve
 
 Valutiamo la calibrazione del modello tramite predictiveness curve.
+
+```{r fig.show = 'hide'}
+# Predictiveness curve del modello
+plot((1 - estmodel$surv) * 100,
+     estmodel$time,
+     main = '',
+     type = 'l',
+     ylim = c(0, 1),
+     lwd = 3,
+     ylab = 'r',
+     cex.lab = 1.7,
+     cex.axis = 1.7,
+     xlab = expression(paste('P(riskscore', '' <= 'r)*100')),
+     xaxt = "n",
+     yaxt = "n",
+     frame = F
+)
+```
+```{r eval=FALSE}
+# Predictiveness curve of a useless model:
+p <- sum(dataset$event.12m) / dim(dataset)[1]
+lines(c(0, 100),
+      c(p, p),
+      lty = 2,
+      lwd = 3,
+      col = 'gray')
+text(40, 0.1, labels = bquote(rho ==  .(round(p, 3) * 100) ~ '%'), cex = 1.7) 
+# Predictiveness curve of the ideal risk predictor:
+lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
+lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
+lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
+```
 ```{r echo=FALSE}
 # Predictiveness curve del modello
 plot((1 - estmodel$surv) * 100,
@@ -166,14 +198,12 @@ plot((1 - estmodel$surv) * 100,
      yaxt = "n",
      frame = F
 )
-
 axis(
   2,
   at = c(0, 0.2, 0.4, 0.6, 0.8, 1),
   labels = NA,
   pos = 0
 )
-
 axis(
   2,
   at = c(0, 0.2, 0.4, 0.6, 0.8, 1),
@@ -181,7 +211,6 @@ axis(
   cex.axis = 1.7,
   pos = 0
 )
-
 axis(
   1,
   at = c(0, 20, 40, 60, 80, 100),
@@ -189,19 +218,14 @@ axis(
   cex.axis = 1.7,
   pos = 0
 )
-
-#Plottiamo anche la prevalenza p e la curva del predittore di rischio ideale.
 # Predictiveness curve of a useless model:
 p <- sum(dataset$event.12m) / dim(dataset)[1]
-
 lines(c(0, 100),
       c(p, p),
       lty = 2,
       lwd = 3,
       col = 'gray')
-
 text(40, 0.1, labels = bquote(rho ==  .(round(p, 3) * 100) ~ '%'), cex = 1.7) 
-
 # Predictiveness curve of the ideal risk predictor:
 lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
 lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
@@ -227,9 +251,11 @@ print(paste("Brier score under strong calibration: ", brier_score_sc))
 Il valore del Brier score è più vicino allo zero che all'uno e ciò indica che il modello è ben calibrato.
 
 ### Discriminazione
+
 Valutiamo l'accuratezza della predizione del rischio e Scegliamo poi la soglia migliore da utilizzare usando l'indice di Youden:
 
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
+library("pROC")
 
 roc_model <- roc(dataset$event.12m, dataset$riskdeath)
 

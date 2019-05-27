@@ -54,6 +54,39 @@ estmodel <- survfit(Surv(riskdeath, event.12m) ~ 1, data = dataset)
 ```
 
 Valutiamo la calibrazione del modello tramite predictiveness curve.
+```{r fig.show = 'hide'}
+# Predictiveness curve del modello
+plot((1 - estmodel$surv) * 100,
+     estmodel$time,
+     main = '',
+     type = 'l',
+     ylim = c(0, 1),
+     lwd = 3,
+     ylab = 'r',
+     cex.lab = 1.7,
+     cex.axis = 1.7,
+     xlab = expression(paste('P(riskscore', '' <= 'r)*100')),
+     xaxt = "n",
+     yaxt = "n",
+     frame = F
+)
+```
+
+Plottiamo anche la prevalenza $p$ e la curva del predittore di rischio ideale.
+```{r eval=FALSE}
+# Predictiveness curve of a useless model:
+p <- sum(dataset$event.12m) / dim(dataset)[1]
+lines(c(0, 100),
+      c(p, p),
+      lty = 2,
+      lwd = 3,
+      col = 'gray')
+text(40, 0.1, labels = bquote(rho ==  .(round(p, 3) * 100) ~ '%'), cex = 1.7) 
+# Predictiveness curve of the ideal risk predictor:
+lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
+lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
+lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
+```
 ```{r echo=FALSE}
 # Predictiveness curve del modello
 plot((1 - estmodel$surv) * 100,
@@ -70,14 +103,12 @@ plot((1 - estmodel$surv) * 100,
      yaxt = "n",
      frame = F
 )
-
 axis(
   2,
   at = c(0, 0.2, 0.4, 0.6, 0.8, 1),
   labels = NA,
   pos = 0
 )
-
 axis(
   2,
   at = c(0, 0.2, 0.4, 0.6, 0.8, 1),
@@ -85,7 +116,6 @@ axis(
   cex.axis = 1.7,
   pos = 0
 )
-
 axis(
   1,
   at = c(0, 20, 40, 60, 80, 100),
@@ -93,27 +123,21 @@ axis(
   cex.axis = 1.7,
   pos = 0
 )
-
-#Plottiamo anche la prevalenza p e la curva del predittore di rischio ideale.
 # Predictiveness curve of a useless model:
 p <- sum(dataset$event.12m) / dim(dataset)[1]
-
 lines(c(0, 100),
       c(p, p),
       lty = 2,
       lwd = 3,
       col = 'gray')
-
 text(40, 0.1, labels = bquote(rho ==  .(round(p, 3) * 100) ~ '%'), cex = 1.7) 
-
 # Predictiveness curve of the ideal risk predictor:
 lines(c(0, (1 - p) * 100), c(0, 0), lwd = 4)
 lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
 lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
 ```
 
-Sull'asse delle x abbiamo la funzione di ripartizione del rischio predetto.
-La predictivness curve rappresenta la funzione di ripartizione del rischio predetto. Rispetto al modello perfetto, che arriva fino al 68.1% (complementare della probabilità 31.9%), la nostra predictivness curve ci mostra come (dopo il 10% circa) il modello sovrastimi il rischio di morte del paziente.
+Sull'asse delle x abbiamo la funzione di ripartizione del rischio predetto e la predictiveness curve ne rappresenta la funzione di ripartizione. Rispetto al modello perfetto, che arriva fino al 68.1% (complementare della probabilità 31.9%), la nostra predictivness curve ci mostra come (dopo il 10% circa) il modello sovrastimi il rischio di morte del paziente.
 
 \newpage
 
@@ -196,7 +220,6 @@ print(AUC)
 Con un AUC di poco superiore a 0.7 il modello è al limite dell'accettabilità, sapevamo che avendo così pochi dati le performance (utilizzando soltanto le covariate cliniche) sarebbero state relativamente basse.
 Il valore che massimizza la differenza tra veri e falsi positivi è derivato dallo Youden ed è pari a $0,3581$.
 
-\newpage
 ## Net benefit
 
 Calcoliamo infine il beneficio che otteniamo trattando pazienti malati rispetto alla perdita che abbiamo trattando pazienti sani:
@@ -216,13 +239,9 @@ link... http://www.danieldsjoberg.com/dca/reference/stdca.html
 
 In base al grafico soprastante, notiamo come fino ad un valore di threshold probability dello 0.3 circa, il rischio di morte del paziente coincide con la curva dei benefici netti della popolazione. 
 
-\newpage
-
 Plottiamo il net benefit per il modello con i costi sull'asse superiore:
-```{r echo=FALSE}
-
+```{r, fig.show='hide'}
 par(mar = c(5, 4.5, 4, 1))
-
 plot(
   netbenefit$net.benefit$threshold,
   netbenefit$net.benefit$riskdeath,
@@ -238,14 +257,30 @@ plot(
   cex.axis = 1.6,
   frame = F
 )
+```
 
+```{r echo=FALSE}
+plot(
+  netbenefit$net.benefit$threshold,
+  netbenefit$net.benefit$riskdeath,
+  type = "l",
+  lwd = 3,
+  xlim = c(0, 1),
+  ylim = c(0, 0.20),
+  xlab = "r",
+  ylab = "NB(r)",
+  xaxt = "n",
+  yaxt = "n",
+  cex.lab = 1.7,
+  cex.axis = 1.6,
+  frame = F
+)
 axis(
   1,
   at = c(0, 0.2, 0.4, 0.6, 0.8, 1),
   labels = NA,
   pos = 0
 )
-
 axis(
   1,
   at = c(0, 0.2, 0.4, 0.6, 0.8, 1),
@@ -253,7 +288,6 @@ axis(
   cex.axis = 1.7,
   pos = 0
 )
-
 axis(
   2,
   at = c(0, 0.05, 0.1, 0.15, 0.2),
@@ -261,7 +295,6 @@ axis(
   cex.axis = 1.7,
   pos = 0
 )
-
 # We add an extra axis on the top of the graph with the costs:
 axis(
   3,
@@ -269,7 +302,6 @@ axis(
   labels = c(0, 0.25, 0.67, 1.5, 4, 'Inf'),
   cex.axis = 1.6
 )
-
 mtext(
   "C",
   side = 3,
@@ -277,7 +309,6 @@ mtext(
   cex = 1.7,
   las = 1
 )
-
 legend(
   'topright',
   c("riskdeath"),
@@ -287,5 +318,4 @@ legend(
   bty = 'n',
   cex = 1.7
 )
-
 ```

@@ -69,8 +69,10 @@ pander(results[results[order(results$p), ]$p <= 0.05, ])
 ```
 In tabella vengono mostrate tutte quelle covariate il cui test è particolarmente significativo (p-value < 0.05).
 Per la tabella completa si rimanda all'apposita sezione nell'appendice.
+
 ### Valutazione degli errori
-Verifichiamo quali covariate presentano una associazione significativa al 5% dopo l'applicazione di metodi per valutare l'errore dovuto a comparazioni multiple.
+
+Verifichiamo quali covariate presentano una associazione significativa al 5% dopo l'applicazione di metodi per valutare l'errore dovuto a comparazioni multiple.\\
 Valutiamo inizialmente il Family-Wise Error Rate (FWER) utilizzando la procedura di Holm
 ```{r}
 results$q.holm <- p.adjust(results$p, method = "holm")
@@ -140,7 +142,7 @@ mtext(
   cex = .75
 )
 ```
-La particolarità della penalizzazione ridge è quella di far avvicinare tutti i coefficienti a zero senza però annullarli. \'E un metodo che infatti non viene quasi mai utilizzato per eseguire feature selection.
+La particolarità della penalizzazione ridge è quella di far avvicinare tutti i coefficienti a zero senza però annullarli. \`E un metodo che infatti non viene quasi mai utilizzato per eseguire feature selection.
 Dall'immagine vediamo ovviamente che più aumenta $\lambda$, più tutti i coefficienti vanno verso lo zero. 
 
 ### Penalizzazione Lasso
