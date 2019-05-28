@@ -2,6 +2,10 @@
  
 \titleformat{\chapter}[display]{\normalfont\bfseries}{}{0pt}{\Huge}
 \titlespacing*{\chapter}{0pt}{-50pt}{40pt}
+
+\newpagestyle{mystyle}
+{\sethead[\thepage][][\chaptertitle]{}{}{\thepage}}
+\pagestyle{mystyle}  
   
 \definecolor{shadecolor}{RGB}{248,248,240}
 \raggedbottom 
