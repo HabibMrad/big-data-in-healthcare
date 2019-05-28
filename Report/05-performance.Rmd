@@ -155,7 +155,6 @@ print(paste("Brier score under strong calibration: ", brier_score_sc))
 ```
 Il valore del Brier score è più vicino allo zero che all'uno e ciò indica che il modello è ben calibrato.
 
-
 ## Discriminazione
 Valutiamo l'accuratezza della predizione del rischio e Scegliamo poi la soglia migliore da utilizzare usando l'indice di Youden:
 
@@ -222,7 +221,7 @@ Il valore che massimizza la differenza tra veri e falsi positivi è derivato dal
 
 ## Net benefit
 
-Calcoliamo infine il beneficio che otteniamo trattando pazienti malati rispetto alla perdita che abbiamo trattando pazienti sani:
+Calcoliamo infine il beneficio che otteniamo trattando pazienti malati rispetto alla perdita che abbiamo trattando pazienti sani, viene utilizzata la funzione stdca [-@R-stdca]:
 
 ```{r results='hide'}
 netbenefit <-
@@ -234,8 +233,6 @@ netbenefit <-
     predictors = c("riskdeath")
   )
 ```
-
-link... http://www.danieldsjoberg.com/dca/reference/stdca.html
 
 In base al grafico soprastante, notiamo come fino ad un valore di threshold probability dello 0.3 circa, il rischio di morte del paziente coincide con la curva dei benefici netti della popolazione. 
 

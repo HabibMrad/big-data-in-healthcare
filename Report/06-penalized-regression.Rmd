@@ -37,7 +37,7 @@ plot(
 
 ## Valutiamo la correlazione tra le covariate geniche
 
-```{r,  fig.width = 8, fig.height = 7, warning=FALSE}
+```{r fig.height=7, fig.width=8, message=FALSE, warning=FALSE}
 library("corrplot")
 
 corrs <- cor(dataset[, 3:72])
@@ -50,8 +50,9 @@ corrplot(cor(dataset[, vars]), method = "number")
 Notiamo subito che abbiamo diverse covariate molto correlate fra di loro.
 
 ## Valutazione della correlazione tra le covariate geniche e l'outcome
+
 Utilizziamo un modello di Cox univariato per ogni covariata per valutarne l'associazione con l'outcome:
-```{r}
+```{r warning=FALSE}
 library("pander")
 vars <- names(dataset[, 3:72])
 output <- lapply(vars, function(var) {
@@ -68,11 +69,12 @@ results$features <- vars
 pander(results[results[order(results$p), ]$p <= 0.05, ])
 ```
 In tabella vengono mostrate tutte quelle covariate il cui test è particolarmente significativo (p-value < 0.05).
-Per la tabella completa si rimanda all'apposita sezione nell'appendice.
+Per la tabella completa si rimanda all'apposita sezione nell'appendice ([A2][Correlazione tra covariate geniche e outcome]).
 
 ### Valutazione degli errori
 
-Verifichiamo quali covariate presentano una associazione significativa al 5% dopo l'applicazione di metodi per valutare l'errore dovuto a comparazioni multiple.\\
+Verifichiamo quali covariate presentano una associazione significativa al 5% dopo l'applicazione di metodi per valutare l'errore dovuto a comparazioni multiple.
+\newline
 Valutiamo inizialmente il Family-Wise Error Rate (FWER) utilizzando la procedura di Holm
 ```{r}
 results$q.holm <- p.adjust(results$p, method = "holm")
@@ -142,7 +144,7 @@ mtext(
   cex = .75
 )
 ```
-La particolarità della penalizzazione ridge è quella di far avvicinare tutti i coefficienti a zero senza però annullarli. \`E un metodo che infatti non viene quasi mai utilizzato per eseguire feature selection.
+La particolarità della penalizzazione ridge è quella di far avvicinare tutti i coefficienti a zero senza però annullarli. E' un metodo che infatti non viene quasi mai utilizzato per eseguire feature selection.
 Dall'immagine vediamo ovviamente che più aumenta $\lambda$, più tutti i coefficienti vanno verso lo zero. 
 
 ### Penalizzazione Lasso

@@ -1,9 +1,14 @@
 ---
-title: "Breast Cancer Report"
+title: |
+  | Report progetto
+  | Big Data in Health Care
+  |
+  |
+  |
 author:
-- "Alessandro De Cicco MATRICOLA"
-- "Emanuele Carnati MATRICOLA"
-- "Lorenzo Mammana MATRICOLA"
+- "Alessandro De Cicco 834225"
+- "Emanuele Carnati 781231"
+- "Lorenzo Mammana 807391"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
 documentclass: book

@@ -1,5 +1,4 @@
-# Capitolo 8
-## Predizione del rischio di evento per 3 soggetti «tipo» (scelti casualmente nel dataset o nuovi ipotetici soggetti) basata sul nuovo modello
+# Predizione del rischio di evento per 3 soggetti
 
 ```{r include=FALSE}
 library("survival")
@@ -65,12 +64,67 @@ print(dataset.3)
 ```{r}
 model <- readRDS("../final_model.rds") 
 
+print(predict(model, newdata = dataset.3[1, ], type = "risk"))
+print(predict(model, newdata = dataset.3[2, ], type = "risk"))
+print(predict(model, newdata = dataset.3[3, ], type = "risk"))
+
 fit1 <- survfit(model, newdata = dataset.3[1, ])
 fit2 <- survfit(model, newdata = dataset.3[2, ])
 fit3 <- survfit(model, newdata = dataset.3[3, ])
 
-plot(NULL, xlab = "tempo (mesi)", ylab = "probabilità di sopravvivenza", xlim = c(0, 18), ylim = c(0, 1))
+plot(NULL, xlab = "tempo (mesi)", ylab = "probabilità di sopravvivenza", 
+           xlim = c(0, 18), ylim = c(0, 1))
 lines(fit1$time, fit1$surv, col = 1)
 lines(fit2$time, fit2$surv, col = 2)
 lines(fit3$time, fit3$surv, col = 3)
+legend("bottomleft", c("patient1", "patient2", "patient3"), col = 1:3, lty=c(1, 1, 1))
 ```
+
+Vediamo che prendendo tre soggetti sopravvissuti per lungo tempo la probabilità di sopravvivere è relativemente alta. 
+Verifichiamo inoltre cosa succederebbe ad uno di questi pazienti se aumentassimo il valore di un gene che riduce notevolmente l'azzardo come il RAB6B (exp(coef) = 0.005897 e p-value < 0.001):
+
+```{r}
+patient <- dataset.3[1, ]
+patient["RAB6B"] = patient["RAB6B"] + 0.3
+fitp1 <- survfit(model, newdata = patient)
+
+plot(NULL, xlab = "tempo (mesi)", ylab = "probabilità di sopravvivenza", 
+           xlim = c(0, 18), ylim = c(0, 1))
+lines(fit1$time, fit1$surv, col = 1)
+lines(fit2$time, fit2$surv, col = 2)
+lines(fit3$time, fit3$surv, col = 3)
+lines(fitp1$time, fitp1$surv, col = 4)
+legend("bottomleft", c("patient1", "patient2", "patient3", 
+                       "patient1 con RAB6B aumentato"), col = 1:4, lty=c(1, 1, 1, 1))
+```
+
+Chiaramente la probabilità di sopravvivenza aumenta leggermente, vediamo se invece di aumentarlo ne diminuiamo il valore:
+
+```{r}
+patient <- dataset.3[1, ]
+patient["RAB6B"] = patient["RAB6B"] - 0.3
+fitp1 <- survfit(model, newdata = patient)
+
+plot(NULL, xlab = "tempo (mesi)", ylab = "probabilità di sopravvivenza", 
+           xlim = c(0, 18), ylim = c(0, 1))
+lines(fit1$time, fit1$surv, col = 1)
+lines(fit2$time, fit2$surv, col = 2)
+lines(fit3$time, fit3$surv, col = 3)
+lines(fitp1$time, fitp1$surv, col = 4)
+legend("bottomleft", c("patient1", "patient2", "patient3", 
+                       "patient1 con RAB6B diminuito"), col = 1:4, lty=c(1, 1, 1, 1))
+```
+
+In questo caso la probabilità di sopravvivere diminuisce di molto.\newline
+Non avendo a disposizione dati reali di pazienti dobbiamo necessariamente limitarci a fare considerazioni provando a "giocare" con i valori che aumentano o diminuiscono l'azzardo, senza però poter effettivamente verificare la bontà reale del modello.
+
+
+
+
+
+
+
+
+
+
+

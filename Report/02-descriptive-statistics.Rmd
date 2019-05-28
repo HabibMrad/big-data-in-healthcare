@@ -1,6 +1,5 @@
-# Capitolo 2
-## Statistiche descrittive
-### Operazioni preliminari
+# Statistiche descrittive
+## Operazioni preliminari
 
 Il package pander viene utilizzato per renderizzare in maniera elegante i metodi standard di R.
 ```{r warning=FALSE}
@@ -21,7 +20,7 @@ dataset <-
   )
 ```
 
-Mostriamo le statistiche relative alle covariate cliniche, per le analisi su tutte le variabili ci riportiamo all' [Inserire link all'appendice]
+Mostriamo le statistiche relative alle covariate cliniche, per le analisi su tutte le variabili ci riportiamo all'apposita sezione dell'appendice ([A1][Analisi descrittive di tutte le variabili del dataset])
 ```{r}
 # Rimuovo l'id della riga
 dataset <- dataset[,-1]
@@ -40,19 +39,17 @@ dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
 VAR_NUMERIC <- c("time", "event", "Diam", "N", "ER", "Grade", "Age")
 ```
 
-### Computazione statistiche
+## Computazione statistiche
 
 ```{r}
 pander(describe(dataset), big.mark = ",") #-- statistiche descrittive
 ```
 Dalle statistiche vediamo che il tempo massimo di follow-up è di quasi 18 mesi e abbiamo più censure che eventi (media < 0.5). La media d'eta dei pazienti del nostro dataset e' di 44 anni, da un minimo di 26 anni ad un massimo di 53. Notiamo come il 33% dei pazienti sia deceduto al termine della terapia (mean-event).
 
-\newpage
-
 ```{r}
 pander(cor(dataset[,VAR_NUMERIC]),big.mark=",") #-- matrice di correlazione
 ```
-Da una prima matrice di correlazione, tra le variabili principali dello studio, notiamo come solamente la variabile event abbia una correlazione di poco superiore a 0,5. 
+Da una prima matrice di correlazione, tra le variabili principali dello studio, notiamo come solamente la variabile time abbia una correlazione di poco superiore a 0,5 con l'outcome dello studio. 
 
 \newpage
 
@@ -68,5 +65,9 @@ for (i in names(dataset))
 ```
 
 Focalizzandosi sulle distribuzioni delle variabili "time" ed "Age" nei grafici dei boxplot:
-  - la distribuzione tra il quartile superiore ed il quartile inferiore della variabile "time" ci indica che il 50% dei pazienti hanno avuto un trattamento di una durata tra i 6 ed i 10 mesi. Non sono presenti outlier.
-  - la distribuzione tra il quartile superiore ed il quartile inferiore della variabile "Age" ci indica che l'età del 50% dei pazienti, al momento della diagnosi, si aggirava attori i 42 ed i 48 anni. è presente un solo outlier, il valore minimo riscontrato nella distribuzione (26 anni), un'eccezione rispetto all'età dei pazienti restanti che si aggira tra i 29 ed i 53 anni.
+\newline
+  - la distribuzione tra il quartile superiore ed il quartile inferiore della variabile "time" ci indica che il 50% dei pazienti hanno avuto un trattamento di una durata tra i 6 ed i 10 mesi. Non sono presenti outlier. 
+\newline
+  - la distribuzione tra il quartile superiore ed il quartile inferiore della variabile "Age" ci indica che l'età del 50% dei pazienti, al momento della diagnosi, si aggirava attori i 42 ed i 48 anni. 
+\newline
+E' presente un solo outlier, il valore minimo riscontrato nella distribuzione (26 anni), un'eccezione rispetto all'età dei pazienti restanti che si aggira tra i 29 ed i 53 anni.

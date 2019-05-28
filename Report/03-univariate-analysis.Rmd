@@ -1,5 +1,4 @@
-# Capitolo 3
-## Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio
+# Analisi univariate dell’associazione di ciascun fattore con l’outcome in studio
 
 ```{r include=FALSE}
 # carico le librerie necessarie
@@ -31,7 +30,6 @@ Calcoliamo la correlazione tra tutte le variabili e l'outcome dello studio, ovve
 
 ```{r}
 cor_mat <- cor(dataset, dataset$event)
-# pander(cor_mat[sort.list(abs(cor_mat), decreasing = TRUE), 1], big.mark = ",")
 pander(cor_mat)
 ```
 Dalla matrice risultante vediamo che solamente il tempo ha un valore di correlazione assoluto superiore a 0.5, mentre le altre variabili non sembrano particolarmente correlate con l'outcome dello studio.

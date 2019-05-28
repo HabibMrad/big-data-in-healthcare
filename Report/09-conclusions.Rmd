@@ -1,5 +1,8 @@
-# Capitolo 9
-## Breve commento discorsivo ai risultati. Menzionare eventuali limiti dei dati e problematiche riscontrate durante analisi
+# Conclusioni
+Il modello addestrato con le covariate geniche ottiene un AUC superiore allo 0.9 che ne potrebbe indicare la bontà se non fosse che, ovviamente, abbiamo un grosso bias introdotto dalla di cicolarità (stesso dataset in training e test). \newline
+Abbiamo riscontrato problemi relativi alla dimensione del dataset e al balance dell'outcome (maggioranza di censure) che hanno portato ad avere alcune variabili con coefficienti statisticamente poco significativi per il modello di Cox. \newline
+Il modello di Cox finale si dimostra in grado di mostrare la presenza di diversi geni in grado di contribuire ad aumentare o a ridurre il rischio di morte o di metastasi, aprendo quindi possibili ulteriori indagini in campo medico. \newline
+Per futuri sviluppi sarebbe interessante valutare le performance del modello su nuovi pazienti testando più in dettaglio soprattutto l'influenza di tutte quelle covariate statisticamente poco significative, per poterle potenzialmente rimuovere ottenendo quindi un modello più semplice e ugualmente efficace.
 
 
 

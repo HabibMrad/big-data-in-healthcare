@@ -43,6 +43,8 @@ title('Kaplan-Meier')
 
 Come ci si aspetta, più passa il tempo, più la probabilità di sopravvivere dei pazienti si abbassa.
 
+\newpage
+
 Stimiamo inoltre la funzione di azzardo cumulato usando:
 \begin{itemize}
 \item Lo stimatore di Aalen-Nelson
@@ -58,11 +60,12 @@ plot(fit$time,
      na.haz,
      type = 's',
      xlab = 'tempo (mesi) ',
-     ylab = 'azzardo cumulato')
+     ylab = 'azzardo cumulato',
+     ylim = c(0, 1))
 ```
 
 ```{r}
-# Relationship between survival and hazard
+# Relazione tra sopravvivenza ed azzardo
 cumhaz <- -log(fit$surv)
 plot(
   fit$time,
@@ -75,14 +78,15 @@ plot(
 ```
 
 ```{r}
-# Baseline hazard
+# Azzardo baseline
 b.haz <- basehaz(coxph(Surv(dataset$time, dataset$event) ~ 1, method = "exact"))
 plot(
   b.haz$time,
   b.haz$hazard,
   type = 's',
   xlab = 'tempo (mesi)',
-  ylab = 'azzardo cumulato'
+  ylab = 'azzardo cumulato',
+  ylim = c(0, 1)
 )
 ```
 
@@ -102,7 +106,7 @@ lines(fit$time, cumhaz, type = 's', col = 2)
 points(fit$time, cumhaz, pch = 20, col = 2)
 lines(b.haz$time, b.haz$hazard, type = 's', col = 3)
 points(b.haz$time, b.haz$hazard, pch = 5, col = 3)
-legend("bottomright", legend = c("Nelson-Aalen estimate", "-log(S(t))", "Baseline hazard from Cox"),
+legend("bottomright", legend = c("Nelson-Aalen", "-log(S(t))", "Baseline hazard from Cox"),
        col=c(1, 2, 3), lty=1, pch=c(1, 20, 5))
 ```
 Notiamo come i tre grafici siano quasi perfettamente sovrapposti; questo ci da indicazioni circa la correttezza del calcolo della funzione "azzardo" con le tre metodologie precedentemente illustrate.
@@ -119,8 +123,6 @@ Dal summary del modello vediamo che Diam e N contribuiscono ad aumentare l'azzar
 Age e Grade = 1 (differenziazione intermedia) hanno un coefficiente vicino allo zero e quindi danno un contributo quasi nullo all'azzardo.
 Notiamo inoltre che i test statistici hanno una significatività molto bassa (solo un p-value < 0.05), questo è dovuto principalmente alla grandezza del dataset che limita teoricamente il numero di preditorri utilizzabili.
 Per questo motivo possiamo prendere meno in considerazione i valori dei coefficienti di regressione.
-
-Plottiamo il fit del modello tramite la funzione ggsurvplot:
 
 ## Modello baseline
 
@@ -160,12 +162,14 @@ ggcoxzph(test.ph, font.main = 11, font.y = 9, font.x = 11, font.tickslab = 8)
 Vediamo che i residui ottenuti hanno un andamento vicino a quello di una linea perfettamente orizzontale e sono quasi centrati sullo zero, quindi possiamo dire che l'assunzione di azzardo proporzionale non viene violata.
 Come ulteriore indagine testiamo l'assunzione con il metodo proposto da Lin [-@lin].
 
-```{r warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 library("goftte")
 prop(model)
 ```
 
 Vediamo che solamente per uno dei tre test proposti sulla variabile Age abbiamo un p-value < 0.05, possiamo quindi assumere tranquillamente l'ipotesi di azzardo proporzionale ed evitare di adottare strategie per risolvere questo problema rendendo il modello decisamente più complesso.
+
+\newpage
 
 ## Valutazione della forma funzionale delle variabili continue
 
@@ -174,4 +178,4 @@ Testiamo la forma funzionale della variabile Age utilizzando i residui di Martin
 m.age <- coxph(Surv(time, event) ~ Age, data = dataset)
 ggcoxfunctional(m.age, data = dataset)
 ```
-Dal grafico vediamo che l'andamento dei residui nel range $ [35, 50] $ è quasi linearmente decrescente, possiamo accettare il risultato visto che il 90% delle pazienti del dataset ha un'età che è contenuta in questo range.
+Dal grafico vediamo che l'andamento dei residui nel range $[35, 50]$ è quasi linearmente decrescente, possiamo accettare il risultato visto che il 90% delle pazienti del dataset ha un'età che è contenuta in questo range.

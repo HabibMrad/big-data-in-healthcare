@@ -2,19 +2,123 @@
 
 # Appendice
 
-## Analisi dei residui di Schoenfeld
-```{r}
-# library("survival")
-# library("survminer")
-# test.ph = cox.zph(model)
-# ggcoxzph(test.ph[1:9], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
-# ggcoxzph(test.ph[10:18], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
-# ggcoxzph(test.ph[19:27], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
-# ggcoxzph(test.ph[28:34], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+## Analisi descrittive di tutte le variabili del dataset
+
+```{r echo=FALSE, warning=FALSE}
+library("pander")
+library("psych")
+
+dataset <-
+  read.table(
+    "../dataset.csv",
+    na.strings = ".",
+    sep = "\t",
+    header = T,
+    row.names = NULL
+  )
+
+# Rimuovo l'id della riga
+dataset <- dataset[,-1]
+
+# Converto le variabili categoriche in categorie numeriche
+dataset$Diam <- ifelse(dataset$Diam == "<=2cm", 0, 1)
+dataset$N <- ifelse(dataset$N == "<4", 0, 1)
+dataset$ER <- ifelse(dataset$ER == "Negative", 0, 1)
+dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
+                        0,
+                        ifelse(dataset$Grade == "Intermediate", 1, 2))
+
+VAR_NUMERIC <- c("time", "event", "Diam", "N", "ER", "Grade", "Age")
+
+pander(describe(dataset), big.mark = ",") #-- statistiche descrittive
 ```
 
+## Correlazione tra covariate geniche e outcome
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library("survival")
+library("glmnet")
+
+# carico il dataset
+dataset <- read.table(
+  "../dataset.csv",
+  na.strings = ".",
+  sep = "\t",
+  header = T,
+  row.names = NULL
+)
+
+# Rimuovo l'id della riga
+dataset <- dataset[,-1]
+
+dataset <- dataset[c(1, 2, 8:length(dataset))]
+library("pander")
+vars <- names(dataset[, 3:72])
+output <- lapply(vars, function(var) {
+  formula    <- as.formula(paste("Surv(time, event) ~ ", var))
+  fit.uni    <- coxph(formula, data = dataset)
+  beta       <- coef(fit.uni)
+  se         <- sqrt(diag(fit.uni$var))
+  CI         <- round(exp(confint(fit.uni)), 3)
+  round(c(exp(beta), CI, p = 1 - pchisq((beta / se) ^ 2, 1)), 3)
+})
+results <- as.data.frame(matrix(unlist(output), ncol = 4, byrow = T))
+names(results) <- c("HR", "lower95%CI", "upper95%CI", "p")
+results$features <- vars
+pander(results[results[order(results$p), ]$p <= 0.05, ])
+```
+
+## Analisi dei residui di Schoenfeld
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# carico il dataset
+dataset = read.table(
+  "../dataset.csv",
+  na.strings = ".",
+  sep = "\t",
+  header = T,
+  row.names = NULL
+)
+
+# Rimuovo l'id della riga
+dataset <- dataset[,-1]
+
+# Converto le variabili categoriche in categorie numeriche
+dataset$Diam <- ifelse(dataset$Diam == "<=2cm", 0, 1)
+dataset$N <- ifelse(dataset$N == "<4", 0, 1)
+dataset$ER <- ifelse(dataset$ER == "Negative", 0, 1)
+dataset$Grade <- ifelse(dataset$Grade == "Poorly diff",
+                        0,
+                        ifelse(dataset$Grade == "Intermediate", 1, 2))
+
+adlasso.HR = readRDS("../adlassohr.rds")
+idx_genic <- c(8:77)
+idx_genic <- idx_genic[adlasso.HR != 1]
+
+# Scelgo le feature geniche in base all'adaptive lasso
+dataset <- dataset[, c(1:7, idx_genic)]
+
+model <-
+  coxph(
+    formula = Surv(time, event) ~ Diam + N + ER + Grade + Age + Contig63649_RC + QSCN6L1 +
+      Contig32125_RC + SCUBE2 + OXCT1 + MMP9 + RUNDC1 + KNTC2 +
+      SERF1A + GPR180 + RAB6B + ZNF533 + RTN4RL1 + MTDH + Contig40831_RC +
+      COL4A2 + STK32B + GPR126 + SLC2A3 + PECI.1 + ORC6L + RFC4 + MS4A7 +
+      PITRM1 + IGFBP5.1 + PRC1 + Contig20217_RC + EGLN1 + ESM1,
+    data = dataset
+  )
+
+# Scelgo le feature geniche in base all'adaptive lasso
+library("survival")
+library("survminer")
+test.ph = cox.zph(model)
+ggcoxzph(test.ph[1:9], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+ggcoxzph(test.ph[10:18], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+ggcoxzph(test.ph[19:27], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+ggcoxzph(test.ph[28:34], font.main = 8, font.y = 7, font.x = 11, font.tickslab = 8)
+```
+
+### Verifica dei residui con il metodo di Lin
 ```{r}
-# Verifica dei residui con il metodo di Lin
-# library("goftte")
-# prop(model, seed = 200519)
+library("goftte")
+prop(model, seed = 200519)
 ```
