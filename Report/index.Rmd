@@ -9,7 +9,6 @@ author:
 - "Alessandro De Cicco 834225"
 - "Emanuele Carnati 781231"
 - "Lorenzo Mammana 807391"
-date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
 documentclass: book
 classoption: openany

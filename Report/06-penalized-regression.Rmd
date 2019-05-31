@@ -66,7 +66,8 @@ output <- lapply(vars, function(var) {
 results <- as.data.frame(matrix(unlist(output), ncol = 4, byrow = T))
 names(results) <- c("HR", "lower95%CI", "upper95%CI", "p")
 results$features <- vars
-pander(results[results[order(results$p), ]$p <= 0.05, ])
+results <- results[order(results$p), ]
+pander(results[results$p <= 0.05, ])
 ```
 In tabella vengono mostrate tutte quelle covariate il cui test è particolarmente significativo (p-value < 0.05).
 Per la tabella completa si rimanda all'apposita sezione nell'appendice ([A2][Correlazione tra covariate geniche e outcome]).

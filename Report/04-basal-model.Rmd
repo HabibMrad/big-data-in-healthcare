@@ -120,9 +120,11 @@ summary(model)
 ```
 
 Dal summary del modello vediamo che Diam e N contribuiscono ad aumentare l'azzardo, mentre ER e Grade = 2 contribuiscono a diminuirlo. Infatti "Grade = 2" rappresenta un'alta differenziazione del tessuto tumorale rispetto al tessuto sano; quindi è coerente che diminuisca il valore dell'azzardo (lo stesso vale per il recettore dell'estrogeno).
+\newline
 Age e Grade = 1 (differenziazione intermedia) hanno un coefficiente vicino allo zero e quindi danno un contributo quasi nullo all'azzardo.
-Notiamo inoltre che i test statistici hanno una significatività molto bassa (solo un p-value < 0.05), questo è dovuto principalmente alla grandezza del dataset che limita teoricamente il numero di preditorri utilizzabili.
-Per questo motivo possiamo prendere meno in considerazione i valori dei coefficienti di regressione.
+\newline
+Notiamo inoltre che i test statistici hanno una significatività molto bassa (solo un p-value < 0.05), questo è dovuto principalmente alla grandezza del dataset che limita teoricamente il numero di predittori utilizzabili.
+Per questo motivo dovremmo prendere meno in considerazione i valori dei coefficienti di regressione.
 
 ## Modello baseline
 

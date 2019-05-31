@@ -137,7 +137,7 @@ lines(c((1 - p) * 100, (1 - p) * 100), c(0, 1), lwd = 4)
 lines(c((1 - p) * 100, 100), c(1, 1), lwd = 4)
 ```
 
-Sull'asse delle x abbiamo la funzione di ripartizione del rischio predetto e la predictiveness curve ne rappresenta la funzione di ripartizione. Rispetto al modello perfetto, che arriva fino al 68.1% (complementare della probabilità 31.9%), la nostra predictivness curve ci mostra come (dopo il 10% circa) il modello sovrastimi il rischio di morte del paziente.
+Rispetto al modello perfetto, che arriva fino al 68.1% (complementare della probabilità 31.9%), la nostra predictiveness curve ci mostra come (dopo il 10% circa) il modello sovrastimi parecchio il rischio di morte del paziente. Vediamo che il rischio è giustamente alto per i pazienti che dovrebbero avere l'evento, ma ci aspetteremmo una curva più graduale che parto da 0 e raggiunge il valore $68.1$.
 
 \newpage
 
@@ -153,10 +153,10 @@ brier_score_sc <- mean(dataset$riskdeath * (1 - dataset$riskdeath))
 print(paste("Brier score: ", brier_score))
 print(paste("Brier score under strong calibration: ", brier_score_sc))
 ```
-Il valore del Brier score è più vicino allo zero che all'uno e ciò indica che il modello è ben calibrato.
+Il valore del Brier score è abbastanza vicino allo zero e ciò indica una calibrazione sufficiente del modello.
 
 ## Discriminazione
-Valutiamo l'accuratezza della predizione del rischio e Scegliamo poi la soglia migliore da utilizzare usando l'indice di Youden:
+Valutiamo l'accuratezza della predizione del rischio e scegliamo poi la soglia migliore da utilizzare usando l'indice di Youden:
 
 ```{r echo=FALSE}
 
@@ -245,7 +245,7 @@ plot(
   type = "l",
   lwd = 3,
   xlim = c(0, 1),
-  ylim = c(0, 0.20),
+  ylim = c(0, 0.40),
   xlab = "r",
   ylab = "NB(r)",
   xaxt = "n",

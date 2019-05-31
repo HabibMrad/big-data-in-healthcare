@@ -78,15 +78,15 @@ lines(x = fit$time, y = fit$surv, type='s', lwd=2, col=2, lty = 1)
 
 basal <- readRDS("../basal-model.rds")
 fit <- survfit(basal)
-lines(x = fit$time, y = fit$surv, type='s', lwd=2, col=3, lty = 1)
+lines(x = fit$time, y = fit$surv, type='s', lwd=2, col=4, lty = 3)
 
-legend("topright", c("baseline", "genic", "clinic"), col = 1:3, lty=c(2, 1, 1))
+legend("topright", c("baseline", "genic", "clinic"), col = c(1, 2, 4), lty=c(2, 1, 3))
 ```
 Vediamo che il modello con le sole covariate cliniche da una stima estremamente ottimistica della probabilità di sopravvivenza.
 
 ## Valutazione dell'azzardo proporzionale
 
-Dall'analisi dei residui di Schoenfeld corretti e non con il metodo di Lin (link alla appendice) emerge che la variabile SCUBE2 non rispetta l'ipotesi di azzardo proporzionale, decidiamo quindi di eliminarla dal modello.
+Dall'analisi dei residui di Schoenfeld corretti e non con il metodo di Lin ([A3][Analisi dei residui di Schoenfeld]) emerge che la variabile SCUBE2 non rispetta l'ipotesi di azzardo proporzionale, decidiamo quindi di eliminarla dal modello.
 
 ```{r}
 model2 <-
@@ -128,11 +128,9 @@ legend("topright", c("baseline", "genic", "genic-2", "clinic"), col = 1:4, lty=c
 
 \newpage
 
-## Calibrazione e discriminazione del modello
+## Calibrazione
 
-### Calibrazione
-
-Calcoliamo il rischio di morte al tempo t = 12 mesi, usando come modello il model2.
+Calcoliamo il rischio di morte al tempo t = 12 mesi, usando il modello finale.
 
 ```{r}
 # Predictiveness
@@ -250,9 +248,9 @@ Il valore del Brier score è più vicino allo zero che all'uno e ciò indica che
 
 \newpage
 
-### Discriminazione
+## Discriminazione
 
-Valutiamo l'accuratezza della predizione del rischio e Scegliamo poi la soglia migliore da utilizzare usando l'indice di Youden:
+Valutiamo l'accuratezza della predizione del rischio e scegliamo poi la soglia migliore da utilizzare usando l'indice di Youden:
 
 ```{r eval = FALSE}
 roc_model <- roc(dataset$event.12m, dataset$riskdeath)
